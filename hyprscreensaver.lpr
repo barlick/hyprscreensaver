@@ -34,7 +34,7 @@ var
   temp,swayidledelayseconds : string;
   f : textfile;
   lastruntime,thislastruntime : TDateTime;
-  AppPath,HomeDir : string;
+  AppPath,HomeDir,screensaver_folder,screensaver_filename : string;
 
   procedure GetRunningStatus(cmd:String);
   var
@@ -116,13 +116,16 @@ begin
   end;
 
   { add your program here }
-
   AppPath := ExtractFilePath(ParamStr(0));
+  AppPath := IncludeTrailingPathDelimiter(AppPath);
   HomeDir := GetUserDir;
+  HomeDir := IncludeTrailingPathDelimiter(HomeDir);
   // Read the swayidle wait time in seconds from ~/.config/hypr/hyprscreensaver.conf
   // If it's not present then create it and put defaults in.
   swayidledelayseconds := '900'; // Default is 15 minutes.
   lastruntime := now; thislastruntime := 0;
+  screensaver_folder := HomeDir+'.config/hypr/'; // Default.
+  screensaver_filename := 'screensaver.mp4'; // Default.
   if fileexists(HomeDir+'.config/hypr/hyprscreensaver.conf') then
    begin
     assignfile(f,HomeDir+'.config/hypr/hyprscreensaver.conf');
@@ -147,6 +150,24 @@ begin
          temp := trimleft(temp);
          temp := trimright(temp);
          thislastruntime := strtodatetime(temp);
+        end
+        else if pos('SCREENSAVER_FOLDER',uppercase(temp)) > 0 then
+        begin
+         temp := stringreplace(temp,'SCREENSAVER_FOLDER','',[rfreplaceall,rfignorecase]);
+         temp := stringreplace(temp,'=','',[rfreplaceall,rfignorecase]);
+         temp := stringreplace(temp,'"','',[rfreplaceall,rfignorecase]);
+         temp := trimleft(temp);
+         temp := trimright(temp);
+         screensaver_folder := IncludeTrailingPathDelimiter(temp);
+        end
+        else if pos('SCREENSAVER_FILENAME',uppercase(temp)) > 0 then
+        begin
+         temp := stringreplace(temp,'SCREENSAVER_FILENAME','',[rfreplaceall,rfignorecase]);
+         temp := stringreplace(temp,'=','',[rfreplaceall,rfignorecase]);
+         temp := stringreplace(temp,'"','',[rfreplaceall,rfignorecase]);
+         temp := trimleft(temp);
+         temp := trimright(temp);
+         screensaver_filename := temp;
         end;
      end;
     close(f);
@@ -234,7 +255,7 @@ begin
       Process1.Parameters.Clear;
       Process1.Parameters.Add('dispatch');
       Process1.Parameters.Add('exec');
-      Process1.Parameters.Add('ffplay ~/Documents/screensaver.mp4 -fs -exitonkeydown -exitonmousedown -loop 0');
+      Process1.Parameters.Add('ffplay "'+screensaver_folder+screensaver_filename+'" -fs -exitonkeydown -exitonmousedown -loop 0');
       Process1.Options := [poUsePipes];
       Process1.Execute;
 
@@ -262,7 +283,7 @@ begin
       Process1.Parameters.Clear;
       Process1.Parameters.Add('dispatch');
       Process1.Parameters.Add('exec');
-      Process1.Parameters.Add('ffplay ~/Documents/screensaver.mp4 -fs -exitonkeydown -exitonmousedown -loop 0');
+      Process1.Parameters.Add('ffplay "'+screensaver_folder+screensaver_filename+'" -fs -exitonkeydown -exitonmousedown -loop 0');
       Process1.Options := [poUsePipes];
       Process1.Execute;
 
@@ -335,6 +356,8 @@ begin
       assignfile(f,HomeDir+'.config/hypr/hyprscreensaver.conf');
       rewrite(f);
       writeln(f,'delay = '+swayidledelayseconds);
+      writeln(f,'screensaver_folder = '+screensaver_folder);
+      writeln(f,'screensaver_filename = '+screensaver_filename);
       writeln(f,'last_run_time = '+datetimetostr(lastruntime));
       close(f);
 
