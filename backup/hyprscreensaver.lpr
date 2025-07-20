@@ -135,7 +135,7 @@ begin
          temp := stringreplace(temp,'DELAY','',[rfreplaceall,rfignorecase]);
          temp := stringreplace(temp,'=','',[rfreplaceall,rfignorecase]);
          temp := stringreplace(temp,' ','',[rfreplaceall,rfignorecase]);
-         if strtoint(temp) >= 30 then // Min is 30 seconds, otherwise leave as default (900 seconds = 15 mins).
+         if strtoint(temp) >= 30 then // Min is 30 seconds, otherwise leave as defauly (900 seconds = 15 mins).
           begin
            swayidledelayseconds := temp;
           end;
