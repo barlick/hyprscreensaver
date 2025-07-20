@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <Version Value="12"/>
+    <BuildModes Active="Default"/>
+    <Units>
+      <Unit>
+        <Filename Value="hyprscreensaver.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
+        <TopLine Value="324"/>
+        <CursorPos X="63" Y="343"/>
+        <UsageCount Value="25"/>
+        <Bookmarks Count="1">
+          <Item0 Y="123" ID="1"/>
+        </Bookmarks>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="unit1.pas"/>
+        <UnitName Value="Unit1"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="10"/>
+      </Unit>
+    </Units>
+    <JumpHistory HistoryIndex="5">
+      <Position>
+        <Filename Value="hyprscreensaver.lpr"/>
+        <Caret Line="335" TopLine="311"/>
+      </Position>
+      <Position>
+        <Filename Value="hyprscreensaver.lpr"/>
+      </Position>
+      <Position>
+        <Filename Value="hyprscreensaver.lpr"/>
+        <Caret Line="156" Column="24" TopLine="113"/>
+      </Position>
+      <Position>
+        <Filename Value="hyprscreensaver.lpr"/>
+        <Caret Line="162" Column="36" TopLine="116"/>
+      </Position>
+      <Position>
+        <Filename Value="hyprscreensaver.lpr"/>
+        <Caret Line="197" Column="81" TopLine="151"/>
+      </Position>
+      <Position>
+        <Filename Value="hyprscreensaver.lpr"/>
+        <Caret Line="337" Column="105" TopLine="290"/>
+      </Position>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes ActiveMode=""/>
+    </RunParams>
+  </ProjectSession>
+  <Debugging>
+    <BreakPoints>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="hyprscreensavercmd.lpr"/>
+        <Line Value="121"/>
+      </Item>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="hyprscreensavercmd.lpr"/>
+        <Line Value="149"/>
+      </Item>
+    </BreakPoints>
+  </Debugging>
+</CONFIG>
