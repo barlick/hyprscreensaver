@@ -34,7 +34,7 @@ var
   temp,swayidledelayseconds : string;
   f : textfile;
   lastruntime,thislastruntime : TDateTime;
-  AppPath,HomeDir,screensaver_folder,screensaver_filename : string;
+  AppPath,HomeDir,hyprscreensaver_conf_path_and_filename,screensaver_folder,screensaver_filename,c_parameters : string;
 
   procedure GetRunningStatus(cmd:String);
   var
@@ -99,9 +99,28 @@ var
    end;
  end;
 
+function fn_sanitize_folder(folder,HomeDir : string) : string;
+begin
+  result := folder;
+  if folder <> '' then
+   begin
+    folder := trimleft(folder);
+    folder := trimright(folder);
+    folder := stringreplace(folder,'"','',[rfreplaceall,rfignorecase]);
+    // Do we have a "~" prefix?
+    if copy(folder,1,2) = '~/' then
+     begin
+      folder := HomeDir + copy(folder,3,length(folder));
+     end;
+    // Delimit it.
+    folder := IncludeTrailingPathDelimiter(folder);
+    result := folder;
+   end;
+end;
+
 begin
   // quick check parameters
-  ErrorMsg:=CheckOptions('h', 'help');
+  ErrorMsg:=CheckOptions('h,c', 'help,config');
   if ErrorMsg<>'' then begin
     ShowException(Exception.Create(ErrorMsg));
     Terminate;
@@ -124,11 +143,31 @@ begin
   // If it's not present then create it and put defaults in.
   swayidledelayseconds := '900'; // Default is 15 minutes.
   lastruntime := now; thislastruntime := 0;
+
+  hyprscreensaver_conf_path_and_filename := HomeDir+'.config/hypr/hyprscreensaver.conf'; // Default.
+  // If run using the -c <folder and filename of hyprscreensaver.conf> parameter then use that to override the default hyprscreensaver_conf_path_and_filename:
+  c_parameters := '';
+  temp := GetOptionValue('c');
+  if temp <> '' then
+   begin
+    temp := fn_sanitize_folder(temp,HomeDir);
+    if copy(temp,length(temp),1) = '/' then
+      begin
+       temp := copy(temp,1,length(temp)-1);
+      end;
+    if fileexists(temp) then
+      begin
+       hyprscreensaver_conf_path_and_filename := temp; // Viable...
+       c_parameters := hyprscreensaver_conf_path_and_filename;  // And remember the -c parameter and hyprscreensaver.conf path and filename passed to hyprscreensaver so that we can repeat that when we (re) start swayidle.
+      end;
+   end;
+
   screensaver_folder := HomeDir+'.config/hypr/'; // Default.
   screensaver_filename := 'screensaver.mp4'; // Default.
-  if fileexists(HomeDir+'.config/hypr/hyprscreensaver.conf') then
+
+  if fileexists(hyprscreensaver_conf_path_and_filename) then
    begin
-    assignfile(f,HomeDir+'.config/hypr/hyprscreensaver.conf');
+    assignfile(f,hyprscreensaver_conf_path_and_filename);
     reset(f);
     while not eof(f) do
      begin
@@ -137,6 +176,7 @@ begin
         begin
          temp := stringreplace(temp,'DELAY','',[rfreplaceall,rfignorecase]);
          temp := stringreplace(temp,'=','',[rfreplaceall,rfignorecase]);
+         temp := stringreplace(temp,'"','',[rfreplaceall,rfignorecase]);
          temp := stringreplace(temp,' ','',[rfreplaceall,rfignorecase]);
          if strtoint(temp) >= 30 then // Min is 30 seconds, otherwise leave as default (900 seconds = 15 mins).
           begin
@@ -147,6 +187,7 @@ begin
         begin
          temp := stringreplace(temp,'LAST_RUN_TIME','',[rfreplaceall,rfignorecase]);
          temp := stringreplace(temp,'=','',[rfreplaceall,rfignorecase]);
+         temp := stringreplace(temp,'"','',[rfreplaceall,rfignorecase]);
          temp := trimleft(temp);
          temp := trimright(temp);
          thislastruntime := strtodatetime(temp);
@@ -155,14 +196,16 @@ begin
         begin
          temp := stringreplace(temp,'SCREENSAVER_FOLDER','',[rfreplaceall,rfignorecase]);
          temp := stringreplace(temp,'=','',[rfreplaceall,rfignorecase]);
+         temp := stringreplace(temp,'"','',[rfreplaceall,rfignorecase]);
          temp := trimleft(temp);
          temp := trimright(temp);
-         screensaver_folder := IncludeTrailingPathDelimiter(temp);
+         screensaver_folder := fn_sanitize_folder(temp,HomeDir);
         end
         else if pos('SCREENSAVER_FILENAME',uppercase(temp)) > 0 then
         begin
          temp := stringreplace(temp,'SCREENSAVER_FILENAME','',[rfreplaceall,rfignorecase]);
          temp := stringreplace(temp,'=','',[rfreplaceall,rfignorecase]);
+         temp := stringreplace(temp,'"','',[rfreplaceall,rfignorecase]);
          temp := trimleft(temp);
          temp := trimright(temp);
          screensaver_filename := temp;
@@ -209,7 +252,14 @@ begin
           Process1.Parameters.Clear;
           Process1.Parameters.Add('dispatch');
           Process1.Parameters.Add('exec');
-          Process1.Parameters.Add('swayidle -w timeout '+swayidledelayseconds+' '+AppPath+'hyprscreensaver');
+          if c_parameters <> '' then
+            begin
+             Process1.Parameters.Add('swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver -c '+c_parameters+'"');
+            end
+            else
+            begin
+             Process1.Parameters.Add('swayidle -w timeout '+swayidledelayseconds+' '+AppPath+'hyprscreensaver');
+            end;
           Process1.Options := [poUsePipes];
           Process1.Execute;
         finally
@@ -351,7 +401,7 @@ begin
 
       // Write out the hyprscreensaver.conf with updated values (mainly want "Last run time"):
       lastruntime := now;
-      assignfile(f,HomeDir+'.config/hypr/hyprscreensaver.conf');
+      assignfile(f,hyprscreensaver_conf_path_and_filename);
       rewrite(f);
       writeln(f,'delay = '+swayidledelayseconds);
       writeln(f,'screensaver_folder = '+screensaver_folder);
@@ -364,7 +414,14 @@ begin
       Process1.Parameters.Clear;
       Process1.Parameters.Add('dispatch');
       Process1.Parameters.Add('exec');
-      Process1.Parameters.Add('swayidle -w timeout '+swayidledelayseconds+' '+AppPath+'hyprscreensaver');
+      if c_parameters <> '' then
+        begin
+         Process1.Parameters.Add('swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver -c '+c_parameters'+'"');
+        end
+        else
+        begin
+         Process1.Parameters.Add('swayidle -w timeout '+swayidledelayseconds+' '+AppPath+'hyprscreensaver');
+        end;
       Process1.Options := [poUsePipes];
       Process1.Execute;
 
@@ -394,7 +451,16 @@ end;
 procedure Thyprscreensaver.WriteHelp;
 begin
   { add your help code here }
-  writeln('Usage: ', ExeName, ' -h');
+  writeln('Welcome to the hyprscreensaver terminal application.');
+  writeln('This is for use with the hyprland display manager to faciliate a screensaver capability.');
+  writeln('');
+  writeln('Running as: ', ExeName);
+  writeln('');
+  writeln('Usage: -h = Display this help information.');
+  writeln('Usage: -c <folder and filename for custom hyprscreensaver.conf override file>');
+  writeln('');
+  writeln('NB: The default hyprscreensaver.conf file is ~/.config/hypr/hyprscreensaver.conf and is generated automatically on first run.');
+  writeln('All further usage and configuration information is in hyprscreensaver.conf so please read that.');
 end;
 
 var
