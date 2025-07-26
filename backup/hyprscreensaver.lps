@@ -8,12 +8,12 @@
         <Filename Value="hyprscreensaver.lpr"/>
         <IsPartOfProject Value="True"/>
         <IsVisibleTab Value="True"/>
-        <TopLine Value="185"/>
-        <CursorPos X="64" Y="232"/>
-        <UsageCount Value="42"/>
+        <TopLine Value="507"/>
+        <CursorPos X="20" Y="514"/>
+        <UsageCount Value="46"/>
         <Bookmarks Count="2">
-          <Item0 X="5" Y="309" ID="2"/>
-          <Item1 X="26" Y="127" ID="1"/>
+          <Item0 Y="366" ID="1"/>
+          <Item1 Y="470" ID="2"/>
         </Bookmarks>
         <Loaded Value="True"/>
       </Unit>
@@ -49,123 +49,123 @@
     <JumpHistory HistoryIndex="29">
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="146" TopLine="119"/>
+        <Caret Line="374" TopLine="355"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="152" TopLine="119"/>
+        <Caret Line="375" TopLine="355"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="153" TopLine="119"/>
+        <Caret Line="376" TopLine="355"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="154" TopLine="119"/>
+        <Caret Line="377" TopLine="355"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="156" TopLine="119"/>
+        <Caret Line="378" TopLine="355"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="157" Column="15" TopLine="119"/>
+        <Caret Line="380" TopLine="355"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="164" TopLine="120"/>
+        <Caret Line="381" TopLine="355"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="166" TopLine="122"/>
+        <Caret Line="383" TopLine="355"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="216" Column="22" TopLine="207"/>
+        <Caret Line="385" TopLine="355"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="144" TopLine="118"/>
+        <Caret Line="386" TopLine="355"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="146" TopLine="118"/>
+        <Caret Line="388" TopLine="355"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="152" TopLine="118"/>
+        <Caret Line="389" TopLine="355"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="153" TopLine="118"/>
+        <Caret Line="390" TopLine="355"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="154" TopLine="118"/>
+        <Caret Line="391" TopLine="355"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="156" TopLine="118"/>
+        <Caret Line="392" TopLine="355"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="163" TopLine="119"/>
+        <Caret Line="395" TopLine="355"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="136" Column="52" TopLine="119"/>
+        <Caret Line="363" TopLine="355"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="146" TopLine="119"/>
+        <Caret Line="399" TopLine="355"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="152" TopLine="119"/>
+        <Caret Line="402" TopLine="357"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="153" TopLine="119"/>
+        <Caret Line="404" TopLine="334"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="154" TopLine="119"/>
+        <Caret Line="461" TopLine="437"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="156" TopLine="119"/>
+        <Caret Line="343" TopLine="316"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="163" TopLine="119"/>
+        <Caret Line="456" Column="19" TopLine="436"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="144" TopLine="119"/>
+        <Caret Line="462" Column="16" TopLine="431"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="146" TopLine="119"/>
+        <Caret Line="343" TopLine="316"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="152" TopLine="119"/>
+        <Caret Line="456" Column="33" TopLine="437"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="153" TopLine="119"/>
+        <Caret Line="465" TopLine="437"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="154" TopLine="119"/>
+        <Caret Line="466" TopLine="435"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="156" TopLine="119"/>
+        <Caret Line="515" TopLine="496"/>
       </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
-        <Caret Line="116" Column="23" TopLine="97"/>
+        <Caret Line="474" TopLine="438"/>
       </Position>
     </JumpHistory>
     <RunParams>
@@ -179,7 +179,7 @@
       </Modes>
     </RunParams>
     <HistoryLists>
-      <List Name="LaunchingApplication" Type="File" Count="3">
+      <List Name="LaunchingApplication" Type="File" Count="2">
         <Item1 Value="/usr/bin/gnome-terminal -t &apos;Lazarus Run Output&apos; -e &apos;$(LazarusDir)/tools/runwait.sh $(TargetCmdLine)&apos;"/>
         <Item2 Value="/usr/bin/konsole -T &apos;Lazarus Run Output&apos; -e $(LazarusDir)/tools/runwait.sh $(TargetCmdLine)"/>
       </List>
@@ -190,7 +190,6 @@
         <Item4 Value="-c /hello/"/>
         <Item5 Value="-c"/>
       </List>
-      <List Name="WorkingDirectory" Type="File" Count="1"/>
     </HistoryLists>
   </ProjectSession>
   <Debugging>
@@ -214,14 +213,7 @@
         <WatchScope Value="wpsLocal"/>
         <WatchKind Value="wpkWrite"/>
         <Source Value="hyprscreensaver.lpr"/>
-        <Line Value="387"/>
-      </Item>
-      <Item>
-        <Kind Value="bpkSource"/>
-        <WatchScope Value="wpsLocal"/>
-        <WatchKind Value="wpkWrite"/>
-        <Source Value="hyprscreensaver.lpr"/>
-        <Line Value="308"/>
+        <Line Value="343"/>
       </Item>
     </BreakPoints>
   </Debugging>

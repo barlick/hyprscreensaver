@@ -17,67 +17,74 @@ type
   protected
     procedure DoRun; override;
   public
+    const maxmonitors = 9;
+    var swayidledelayseconds : string;
+    InitialNumInstancesScreensaverApp : integer;
+    lastruntime,thislastruntime : TDateTime;
+    AppPath,HomeDir,hyprscreensaver_conf_path_and_filename,hyprscreensaver_lastruntime_path_and_filename,screensaver_folder,screensaver_filename,c_parameters,monitors : string;
+    nummonitors : integer;
+    monitornames : TStringList;
+    monitorworkspaces : TStringList;
     constructor Create(TheOwner: TComponent); override;
     destructor Destroy; override;
     procedure WriteHelp; virtual;
+    function fn_GetNumberOfAppInstancesRunnnig(cmd:String) : integer;
+    function fn_sanitize_folder(folder,HomeDirs : string) : string;
+    function fn_read_c_parameter_override_for_hyprscreensaver_conf_path_and_filename : string;
+    function fn_get_random_screensaver_filename(screensaver_folderstr : string) : string;
+    function fn_read_hyprscreensaver_conf(hyprscreensaver_conf_path_and_filenamestr : string) : boolean;
+    function fn_read_hyprscreensaver_lastruntime(hyprscreensaver_lastruntime_path_and_filenamestr : string) : TDateTime;
+    function fn_write_hyprscreensaver_conf_file(hyprscreensaver_conf_path_and_filenamestr : string) : boolean; // Write out a hyprscreensaver.conf file.
+    procedure write_lastruntime_to_hyprscreensaver_lastruntime_path_and_filename(lastruntimedt : TDateTime; hyprscreensaver_lastruntime_path_and_filenamestr : string);
+    function fn_runprocess(Executable,param1,param2,param3,param4,param5 : string; ProcessOptions : TProcessOptions; sleepbeforeexecute : integer) : boolean;
+    function fn_get_monitor_info(var nummonitorsint : integer; var monitornamesstr : TStringList; var monitorworkspacesstr : TStringList) : boolean;
   end;
 
 { Thyprscreensave }
-
-procedure Thyprscreensaver.DoRun;
+function Thyprscreensaver.fn_GetNumberOfAppInstancesRunnnig(cmd:String) : integer;
 var
-  ErrorMsg: String;
-  finished : boolean;
-  getout : boolean;
-  swayidledelayseconds : string;
-  InitialNumInstancesScreensaverApp : integer;
-  lastruntime,thislastruntime : TDateTime;
-  AppPath,HomeDir,hyprscreensaver_conf_path_and_filename,hyprscreensaver_lastruntime_path_and_filename,screensaver_folder,screensaver_filename,c_parameters : string;
-
-  function fn_GetNumberOfAppInstancesRunnnig(cmd:String) : integer;
-  var
-   t:TProcess;
-   s:TStringList;
-   ct,numinstances : integer;
-   thisline : string;
-  begin
-   result := 0;
-   t:=tprocess.create(nil);
-   t.Executable:='ps';
-   t.Parameters.Clear;
-   t.Parameters.Add('-C');
-   t.Parameters.Add(cmd);
-   t.Options:=[poUsePipes,poWaitonexit];
-   try
-    t.Execute;
-    s:=tstringlist.Create;
-    try
-     s.LoadFromStream(t.Output);
-     if s.Count > 0 then
+ t:TProcess;
+ s:TStringList;
+ ct,numinstances : integer;
+ thisline : string;
+begin
+ result := 0;
+ t:=tprocess.create(nil);
+ t.Executable:='ps';
+ t.Parameters.Clear;
+ t.Parameters.Add('-C');
+ t.Parameters.Add(cmd);
+ t.Options:=[poUsePipes,poWaitonexit];
+ try
+  t.Execute;
+  s:=tstringlist.Create;
+  try
+   s.LoadFromStream(t.Output);
+   if s.Count > 0 then
+    begin
+     numinstances := 0;
+     cmd := uppercase(cmd);
+     ct := 0;
+     while ct < s.count do
       begin
-       numinstances := 0;
-       cmd := uppercase(cmd);
-       ct := 0;
-       while ct < s.count do
+       thisline := uppercase(s[ct]);
+       if pos(cmd,thisline) > 0 then
         begin
-         thisline := uppercase(s[ct]);
-         if pos(cmd,thisline) > 0 then
-          begin
-           inc(numinstances);
-          end;
-         inc(ct);
+         inc(numinstances);
         end;
-       result := numinstances;
+       inc(ct);
       end;
-    finally
-    s.free;
+     result := numinstances;
     end;
-   finally
-    t.Free;
-   end;
+  finally
+  s.free;
   end;
+ finally
+  t.Free;
+ end;
+end;
 
-function fn_sanitize_folder(folder,HomeDir : string) : string;
+function Thyprscreensaver.fn_sanitize_folder(folder,HomeDirs : string) : string;
 begin
   result := folder;
   if folder <> '' then
@@ -88,7 +95,7 @@ begin
     // Do we have a "~" prefix?
     if copy(folder,1,2) = '~/' then
      begin
-      folder := HomeDir + copy(folder,3,length(folder));
+      folder := HomeDirs + copy(folder,3,length(folder));
      end;
     // Delimit it.
     folder := IncludeTrailingPathDelimiter(folder);
@@ -96,7 +103,7 @@ begin
    end;
 end;
 
-function fn_read_c_parameter_override_for_hyprscreensaver_conf_path_and_filename : string;
+function Thyprscreensaver.fn_read_c_parameter_override_for_hyprscreensaver_conf_path_and_filename : string;
 var
  temp : string;
 begin
@@ -113,7 +120,7 @@ begin
   end;
 end;
 
-function fn_get_random_screensaver_filename(screensaver_folder : string) : string;
+function Thyprscreensaver.fn_get_random_screensaver_filename(screensaver_folderstr : string) : string;
 var
  dirts : TSearchrec;
  screensavervideofiles : TStringList;
@@ -125,7 +132,7 @@ begin
  try
   screensavervideofiles.clear;
   validfileextensions := '.mkv;.mp4;.avi;.mov;.wmv;.webm;';
-  if findfirst(screensaver_folder+'*',faAnyFile,dirts) = 0 then
+  if findfirst(screensaver_folderstr+'*',faAnyFile,dirts) = 0 then
    begin
     repeat
      if (dirts.Attr and faDirectory) <> faDirectory then
@@ -158,23 +165,22 @@ begin
        end;
      end;
    end;
-
  finally
   screensavervideofiles.clear;
   screensavervideofiles.free;
  end;
 end;
 
-function fn_read_hyprscreensaver_conf(hyprscreensaver_conf_path_and_filename : string) : boolean;
+function Thyprscreensaver.fn_read_hyprscreensaver_conf(hyprscreensaver_conf_path_and_filenamestr : string) : boolean;
 var
  f : textfile;
  temp : string;
  x : integer;
 begin
  result := false;
- if fileexists(hyprscreensaver_conf_path_and_filename) then
+ if fileexists(hyprscreensaver_conf_path_and_filenamestr) then
   begin
-   assignfile(f,hyprscreensaver_conf_path_and_filename);
+   assignfile(f,hyprscreensaver_conf_path_and_filenamestr);
    reset(f);
    while not eof(f) do
     begin
@@ -232,15 +238,15 @@ begin
   end;
 end;
 
-function fn_read_hyprscreensaver_lastruntime(hyprscreensaver_lastruntime_path_and_filename : string) : TDateTime;
+function Thyprscreensaver.fn_read_hyprscreensaver_lastruntime(hyprscreensaver_lastruntime_path_and_filenamestr : string) : TDateTime;
 var
  f : textfile;
  temp : string;
 begin
  result := 0;
- if fileexists(hyprscreensaver_lastruntime_path_and_filename) then
+ if fileexists(hyprscreensaver_lastruntime_path_and_filenamestr) then
   begin
-   assignfile(f,hyprscreensaver_lastruntime_path_and_filename);
+   assignfile(f,hyprscreensaver_lastruntime_path_and_filenamestr);
    reset(f);
    while not eof(f) do
     begin
@@ -259,19 +265,19 @@ begin
   end;
 end;
 
-function fn_write_hyprscreensaver_conf_file(hyprscreensaver_conf_path_and_filename : string) : boolean; // Write out a hyprscreensaver.conf file.
+function Thyprscreensaver.fn_write_hyprscreensaver_conf_file(hyprscreensaver_conf_path_and_filenamestr : string) : boolean; // Write out a hyprscreensaver.conf file.
 var
  f : textfile;
 begin
  result := false;
- if hyprscreensaver_conf_path_and_filename <> '' then
+ if hyprscreensaver_conf_path_and_filenamestr <> '' then
   begin
-   assignfile(f,hyprscreensaver_conf_path_and_filename);
+   assignfile(f,hyprscreensaver_conf_path_and_filenamestr);
    rewrite(f);
    writeln(f,'# hyprscreensaver configuration file.');
    writeln(f,'');
    writeln(f,'# The "delay = <seconds>" parameter e.g. "delay = 900" is the number of seconds to wait before "swayidle" runs hyprscreensaver.');
-   writeln(f,'# The default is 900 seconds which is 15 minutes and the minimun allowed value is 30 seconds.');
+   writeln(f,'# The default is 60 seconds which is 1 minute and the minimun allowed value is 30 seconds.');
    writeln(f,'# Example delay seconds values: 60 = 1 minute, 600 = 10 minutes, 900 = 15 minutes, 1800 = 30 miunutes, 3600 = 1 hour.');
    writeln(f,'delay = '+swayidledelayseconds);
    writeln(f,'');
@@ -289,20 +295,20 @@ begin
   end;
 end;
 
-procedure write_lastruntime_to_hyprscreensaver_lastruntime_path_and_filename(lastruntime : TDateTime; hyprscreensaver_lastruntime_path_and_filename : string);
+procedure Thyprscreensaver.write_lastruntime_to_hyprscreensaver_lastruntime_path_and_filename(lastruntimedt : TDateTime; hyprscreensaver_lastruntime_path_and_filenamestr : string);
 var
  f : textfile;
 begin
- if hyprscreensaver_lastruntime_path_and_filename <> '' then
+ if hyprscreensaver_lastruntime_path_and_filenamestr <> '' then
   begin
-   assignfile(f,hyprscreensaver_lastruntime_path_and_filename);
+   assignfile(f,hyprscreensaver_lastruntime_path_and_filenamestr);
    rewrite(f);
-   writeln(f,'last_run_time = '+datetimetostr(lastruntime));
+   writeln(f,'last_run_time = '+datetimetostr(lastruntimedt));
    close(f);
   end;
 end;
 
-function fn_runprocess(Executable,param1,param2,param3,param4,param5 : string; ProcessOptions : TProcessOptions; sleepbeforeexecute : integer) : boolean;
+function Thyprscreensaver.fn_runprocess(Executable,param1,param2,param3,param4,param5 : string; ProcessOptions : TProcessOptions; sleepbeforeexecute : integer) : boolean;
 var
  Process : TProcess;
 begin
@@ -326,6 +332,94 @@ begin
  end;
 end;
 
+function Thyprscreensaver.fn_get_monitor_info(var nummonitorsint : integer; var monitornamesstr : TStringList; var monitorworkspacesstr : TStringList) : boolean;
+var
+ t:TProcess;
+ s:TStringList;
+ ct,x,workspacecount,maxworkspaces : integer;
+ thisline : string;
+begin
+ result := false;
+ nummonitorsint := 0;
+ monitornamesstr.clear;
+ monitorworkspacesstr.clear;
+ maxworkspaces := 9;
+ t:=tprocess.create(nil);
+ t.Executable:='hyprctl';
+ t.Parameters.Clear;
+ t.Parameters.Add('monitors');
+ t.Options:=[poUsePipes,poWaitonexit];
+ try
+  //t.Execute;
+  s:=tstringlist.Create;
+  try
+   //s.LoadFromStream(t.Output);
+   s.clear;
+   s.Add('Monitor HDMI-A-1 (ID 0):');
+   s.Add('Monitor HDMI-A-2 (ID 1):');
+   if s.Count > 0 then
+    begin
+     ct := 0;
+     while ct < s.count do
+      begin
+       thisline := s[ct];
+       thisline := trimleft(thisline);
+       thisline := trimright(thisline);
+       if copy(uppercase(thisline),1,7) = 'MONITOR' then
+        begin
+         if (nummonitorsint < maxmonitors) and (nummonitorsint < maxworkspaces) then
+          begin
+           // E.g. "Monitor HDMI-A-1 (ID 0):"
+           thisline := stringreplace(thisline,'Monitors:','',[rfreplaceall,rfignorecase]);
+           thisline := stringreplace(thisline,'Monitors','',[rfreplaceall,rfignorecase]);
+           thisline := stringreplace(thisline,'Monitor:','',[rfreplaceall,rfignorecase]);
+           thisline := stringreplace(thisline,'Monitor','',[rfreplaceall,rfignorecase]);
+           thisline := trimleft(thisline);
+           thisline := trimright(thisline);
+           // E.g. "HDMI-A-1 (ID 0):"
+           x := pos(' ',thisline);
+           if x > 0 then
+            begin
+             thisline := copy(thisline,1,x-1);
+            end;
+           thisline := trimleft(thisline);
+           thisline := trimright(thisline);
+           // E.g. "HDMI-A-1".
+           inc(nummonitorsint);
+           monitornamesstr.Add(thisline);
+           result := true;
+          end;
+        end;
+       inc(ct);
+      end;
+     if nummonitorsint > 0 then
+      begin
+       workspacecount := (maxworkspaces - nummonitorsint+1);
+       ct := 0;
+       while (ct < nummonitorsint) do
+        begin
+         // First to 8, 2nd to 9 and so on...
+         monitorworkspacesstr.Add(inttostr(workspacecount));
+         inc(workspacecount);
+         inc(ct);
+        end;
+      end;
+    end;
+  finally
+  s.free;
+  end;
+ finally
+  t.Free;
+ end;
+end;
+
+procedure Thyprscreensaver.DoRun;
+var
+  ErrorMsg: String;
+  finished : boolean;
+  getout : boolean;
+  ct : integer;
+  thismonitorname,thismonitorworkspace : string;
 begin
  // Quick check parameters
  ErrorMsg:=CheckOptions('h,c', 'help,config');
@@ -349,68 +443,103 @@ begin
  // Initialise key variables:
  getout := false;
 
- AppPath := ExtractFilePath(ParamStr(0));
- AppPath := IncludeTrailingPathDelimiter(AppPath);
-
- HomeDir := GetUserDir;
- HomeDir := IncludeTrailingPathDelimiter(HomeDir);
-
- swayidledelayseconds := '900'; // Default is 15 minutes.
-
- hyprscreensaver_conf_path_and_filename := HomeDir+'.config/hypr/hyprscreensaver.conf'; // Default.
- // If run using the -c <folder and filename of hyprscreensaver.conf> parameter then use that to override the default hyprscreensaver_conf_path_and_filename:
- c_parameters := fn_read_c_parameter_override_for_hyprscreensaver_conf_path_and_filename;
- if c_parameters <> '' then hyprscreensaver_conf_path_and_filename := c_parameters;
-
- // We alse need a "hyprscreensaver.dat" file on the same path as hyprscreensaver.conf to store the "last run time":
- hyprscreensaver_lastruntime_path_and_filename := extractfilepath(hyprscreensaver_conf_path_and_filename) + 'hyperscreensaver.dat';
-
- screensaver_folder := HomeDir+'.config/hypr/'; // Default.
- screensaver_filename := 'screensaver.mp4'; // Default.
-
- if not fn_read_hyprscreensaver_conf(hyprscreensaver_conf_path_and_filename) then // Read hyprscreensaver.conf to set all of the above key variables to the values stored in that conf file.
-  begin
-   if not fn_write_hyprscreensaver_conf_file(hyprscreensaver_conf_path_and_filename) then getout := true; // If hyprscreensaver.conf not present then create it with the default parameter variables.
-  end;
-
- // Is the difference between "now" (lastruntime) and the last run time read from the hyprscreensaver.dat file (thislastruntime) < 10 seconds then it's a "misfire" so get out.
- if not getout then
-  begin
-   lastruntime := now;
-   thislastruntime := fn_read_hyprscreensaver_lastruntime(hyprscreensaver_lastruntime_path_and_filename);
-   if (thislastruntime <> 0) and (lastruntime - thislastruntime > 0) and (lastruntime - thislastruntime < 0.000115740740740741) then // 10 seconds = 0.000115740740740741
-    begin
-     getout := true;
-    end;
-  end;
-
- // Is hyprscreensaver already running? If so then quit (getout=true):
- if fn_GetNumberOfAppInstancesRunnnig('hyprscreensaver') > 1 then getout := true;
-
- // Is swayidle NOT running? If so then start it up and then quit (getout=true):
- if not getout then
-  begin
-   if fn_GetNumberOfAppInstancesRunnnig('swayidle') = 0 then
-    begin
-     if c_parameters <> '' then
-      begin
-       if not fn_runprocess('hyprctl','dispatch','exec','swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver -c '+c_parameters+'"','','',[poUsePipes],0) then getout := true;
-      end
-      else
-      begin
-       if not fn_runprocess('hyprctl','dispatch','exec','swayidle -w timeout '+swayidledelayseconds+' '+AppPath+'hyprscreensaver','','',[poUsePipes],0) then getout := true;
-      end;
-     getout := true;
-    end;
-  end;
-
  try
+  nummonitors := 0;
+  monitornames := TStringList.create;
+  monitornames.Clear;;
+  monitorworkspaces := TStringList.create;
+  monitorworkspaces.Clear;
+
+  AppPath := ExtractFilePath(ParamStr(0));
+  AppPath := IncludeTrailingPathDelimiter(AppPath);
+
+  HomeDir := GetUserDir;
+  HomeDir := IncludeTrailingPathDelimiter(HomeDir);
+
+  swayidledelayseconds := '60'; // Default is 1 minute.
+
+  hyprscreensaver_conf_path_and_filename := HomeDir+'.config/hypr/hyprscreensaver.conf'; // Default.
+  // If run using the -c <folder and filename of hyprscreensaver.conf> parameter then use that to override the default hyprscreensaver_conf_path_and_filename:
+  c_parameters := fn_read_c_parameter_override_for_hyprscreensaver_conf_path_and_filename;
+  if c_parameters <> '' then hyprscreensaver_conf_path_and_filename := c_parameters;
+
+  // We alse need a "hyprscreensaver.dat" file on the same path as hyprscreensaver.conf to store the "last run time":
+  hyprscreensaver_lastruntime_path_and_filename := extractfilepath(hyprscreensaver_conf_path_and_filename) + 'hyperscreensaver.dat';
+
+  screensaver_folder := HomeDir+'.config/hypr/'; // Default.
+  screensaver_filename := 'screensaver.mp4'; // Default.
+
+  if not fn_read_hyprscreensaver_conf(hyprscreensaver_conf_path_and_filename) then // Read hyprscreensaver.conf to set all of the above key variables to the values stored in that conf file.
+   begin
+    if not fn_write_hyprscreensaver_conf_file(hyprscreensaver_conf_path_and_filename) then getout := true; // If hyprscreensaver.conf not present then create it with the default parameter variables.
+   end;
+
+  // Enumerate monitors via "hyprctl monitors":
+  if not getout then
+   begin
+    if nummonitors <= 0 then
+     begin
+      if not fn_get_monitor_info(nummonitors,monitornames,monitorworkspaces) then getout := true;
+     end;
+   end;
+  if nummonitors <= 0 then getout := true; // Can't enumerate monitors so get out...
+  writeln(inttostr(nummonitors));
+  writeln(monitornames[0]);
+  writeln(monitorworkspaces[0]);
+  writeln(monitornames[1]);
+  writeln(monitorworkspaces[1]);
+
+  // Is the difference between "now" (lastruntime) and the last run time read from the hyprscreensaver.dat file (thislastruntime) < 10 seconds then it's a "misfire" so get out.
+  if not getout then
+   begin
+    lastruntime := now;
+    thislastruntime := fn_read_hyprscreensaver_lastruntime(hyprscreensaver_lastruntime_path_and_filename);
+    if (thislastruntime <> 0) and (lastruntime - thislastruntime > 0) and (lastruntime - thislastruntime < 0.000115740740740741) then // 10 seconds = 0.000115740740740741
+     begin
+      getout := true;
+     end;
+   end;
+
+  // Is hyprscreensaver already running? If so then quit (getout=true):
+  if fn_GetNumberOfAppInstancesRunnnig('hyprscreensaver') > 1 then getout := true;
+
+  // Is swayidle NOT running? If so then start it up and then quit (getout=true):
+  if not getout then
+   begin
+    if fn_GetNumberOfAppInstancesRunnnig('swayidle') = 0 then
+     begin
+      if c_parameters <> '' then
+       begin
+        if not fn_runprocess('hyprctl','dispatch','exec','swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver -c '+c_parameters+'"','','',[poUsePipes],0) then getout := true;
+       end
+       else
+       begin
+        if not fn_runprocess('hyprctl','dispatch','exec','swayidle -w timeout '+swayidledelayseconds+' '+AppPath+'hyprscreensaver','','',[poUsePipes],0) then getout := true;
+       end;
+      getout := true;
+     end;
+   end;
+
   // Kill swayidle to stop it running until this instance of hyprscreensaver has finished.
   if not getout then begin if not fn_runprocess('pkill','swayidle','','','','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
 
   // Switch monitors to high workspaces and run ffplay to display the screensaver video on each workspace:
 
-  // Switch to 1st monitor:
+  // Work through each monitor:
+  ct := 0;
+  while ct < nummonitors do
+   begin
+    thismonitorname := monitornames[ct];
+    thismonitorworkspace := monitorworkspaces[ct];
+    // Switch to this monitor:
+    if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',thismonitorname,'','',[poWaitOnExit, poUsePipes],100) then getout := true; end;
+    // Switch this monitor to its designated screensaver workspace:
+    if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace',thismonitorworkspace,'','',[poWaitOnExit, poUsePipes],100) then getout := true; end;
+    // Launch screensaver video in ffplay on this monitor on its designated workspace:
+    if not getout then begin if not fn_runprocess('hyprctl','dispatch','exec','ffplay "'+screensaver_folder+screensaver_filename+'" -fs -exitonkeydown -exitonmousedown -loop 0','','',[poUsePipes],200) then getout := true; end;
+    inc(ct);
+   end;
+  (*
   if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor','HDMI-A-1','','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
   // Switch that monitor to workspace 8:
   if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace','8','','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
@@ -423,7 +552,7 @@ begin
   if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace','9','','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
   // Launch screensaver video in ffplay on 2nd monitor on workspace 9:
   if not getout then begin if not fn_runprocess('hyprctl','dispatch','exec','ffplay "'+screensaver_folder+screensaver_filename+'" -fs -exitonkeydown -exitonmousedown -loop 0','','',[poUsePipes],0) then getout := true; end;
-
+  *)
   // Main loop: Wait for one or more of the ffplay screensaver video player processes to close:
   if not getout then
    begin
@@ -447,6 +576,18 @@ begin
 
   // Return monitors and workspaces back to "normal":
 
+  // Work through each monitor:
+  ct := 0;
+  while ct < nummonitors do
+   begin
+    thismonitorname := monitornames[ct];
+    // Switch to 1st monitor:
+    if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',thismonitorname,'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
+    // Switch that monitor to workspace 1:
+    if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace',inttostr(ct+1),'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
+    inc(ct);
+   end;
+  (*
   // Switch to 1st monitor:
   if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor','HDMI-A-1','','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
   // Switch that monitor to workspace 1:
@@ -456,7 +597,7 @@ begin
   if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor','HDMI-A-2','','',[poWaitOnExit, poUsePipes],200) then getout := true; end;
   // Switch that monitor to workspace 2:
   if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace','2','','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
-
+  *)
   // Write out the hyprscreensaver.conf with updated values (mainly want "Last run time"):
   if not getout then write_lastruntime_to_hyprscreensaver_lastruntime_path_and_filename(now,hyprscreensaver_lastruntime_path_and_filename);
 
@@ -473,6 +614,10 @@ begin
      end;
    end;
  finally
+  monitornames.Clear;
+  monitornames.Free;
+  monitorworkspaces.Clear;
+  monitorworkspaces.Free;
  end;
 
  // Stop program:
@@ -494,7 +639,7 @@ procedure Thyprscreensaver.WriteHelp;
 begin
   { add your help code here }
   writeln('Welcome to the hyprscreensaver terminal application.');
-  writeln('This is for use with the hyprland display manager to faciliate a screensaver capability.');
+  writeln('This is for use with the linux hyprland display manager to faciliate a screensaver capability.');
   writeln('');
   writeln('Running as: ', ExeName);
   writeln('');
