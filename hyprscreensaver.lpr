@@ -1001,7 +1001,6 @@ begin
   // Return monitors and workspaces back to "normal":
 
   // Work through each monitor and set them back to their original workspaces:
-  // Find out what the currently focussed monitor is and the active workspaces for each monitor. Don't care if this fails:
   if not getout then
    begin
     if (cfocusedmonitorname <> '') and (cmonitoractiveworkspaces.count = nummonitors) then

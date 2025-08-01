@@ -8,12 +8,12 @@
         <Filename Value="hyprscreensaver.lpr"/>
         <IsPartOfProject Value="True"/>
         <IsVisibleTab Value="True"/>
-        <TopLine Value="995"/>
-        <CursorPos X="7" Y="1007"/>
-        <UsageCount Value="58"/>
+        <TopLine Value="979"/>
+        <CursorPos Y="1009"/>
+        <UsageCount Value="59"/>
         <Bookmarks Count="2">
           <Item0 Y="852" ID="2"/>
-          <Item1 Y="1013" ID="1"/>
+          <Item1 Y="1024" ID="1"/>
         </Bookmarks>
         <Loaded Value="True"/>
       </Unit>
@@ -47,9 +47,6 @@
       </Unit>
     </Units>
     <JumpHistory HistoryIndex="29">
-      <Position>
-        <Filename Value="hyprscreensaver.lpr"/>
-      </Position>
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
         <Caret Line="41" Column="33"/>
@@ -164,6 +161,10 @@
       <Position>
         <Filename Value="hyprscreensaver.lpr"/>
         <Caret Line="749" Column="97" TopLine="704"/>
+      </Position>
+      <Position>
+        <Filename Value="hyprscreensaver.lpr"/>
+        <Caret Line="1003" Column="26" TopLine="995"/>
       </Position>
     </JumpHistory>
     <RunParams>

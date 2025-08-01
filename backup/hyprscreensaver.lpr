@@ -1001,12 +1001,23 @@ begin
   // Return monitors and workspaces back to "normal":
 
   // Work through each monitor and set them back to their original workspaces:
-  // Find out what the currently focussed monitor is and the active workspaces for each monitor. Don't care if this fails:
   if not getout then
-   begin
+fs   begin
     if (cfocusedmonitorname <> '') and (cmonitoractiveworkspaces.count = nummonitors) then
      begin
-
+      ct := 0;
+      while ct < nummonitors do
+       begin
+        thismonitorname := monitornames[ct];
+        // Switch to 1st monitor:
+        if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',thismonitorname,'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
+        write_diagnostics('hyprctl dispatch focusmonitor '+thismonitorname);
+        // Switch that monitor to workspace 1:
+        if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace',cmonitoractiveworkspaces[ct],'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
+        write_diagnostics('hyprctl dispatch workspace '+cmonitoractiveworkspaces[ct]);
+        inc(ct);
+       end;
+      if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',cfocusedmonitorname,'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
      end
      else // Use defaults:
      begin
