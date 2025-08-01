@@ -1,5 +1,6 @@
 
 /backup
+/backup/hyprscreensaver.lps
 hyprscreensaver.lps
 lib/x86_64-linux/hyprscreensaver.o
 *.lps
