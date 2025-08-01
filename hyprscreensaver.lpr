@@ -25,6 +25,8 @@ type
     nummonitors : integer;
     monitornames : TStringList;
     monitorworkspaces : TStringList;
+    cfocusedmonitorname : string;
+    cmonitoractiveworkspaces : TStringList;
     diagnostic_mode : boolean;
     constructor Create(TheOwner: TComponent); override;
     destructor Destroy; override;
@@ -39,6 +41,7 @@ type
     procedure write_lastruntime_to_hyprscreensaver_lastruntime_path_and_filename(lastruntimedt : TDateTime; hyprscreensaver_lastruntime_path_and_filenamestr : string);
     function fn_runprocess(Executable,param1,param2,param3,param4,param5 : string; ProcessOptions : TProcessOptions; sleepbeforeexecute : integer) : boolean;
     function fn_get_monitor_info(var nummonitorsint : integer; var monitornamesstr : TStringList; var monitorworkspacesstr : TStringList) : boolean;
+    function fn_get_current_monitor_focused_and_active_workspaces(var nummonitorsint : integer; var cfocusedmonitornamestr : string; var monitornamesstr : TStringList; var cmonitoractiveworkspacesstr : TStringList) : boolean;
     procedure write_diagnostics(s : string);
     procedure output_monitor_config_info;
   end;
@@ -599,6 +602,155 @@ begin
  end;
 end;
 
+function Thyprscreensaver.fn_get_current_monitor_focused_and_active_workspaces(var nummonitorsint : integer; var cfocusedmonitornamestr : string; var monitornamesstr : TStringList; var cmonitoractiveworkspacesstr : TStringList) : boolean;
+var
+ t:TProcess;
+ s:TStringList;
+ ct,ct1,x : integer;
+ thisline,thismonitorname : string;
+ found : boolean;
+begin
+ result := false;
+ write_diagnostics('Attempting to find currently focused monitor and the active workspace for each monitor via fn_get_current_monitor_focused_and_active_workspaces by calling hyprctl monitors.');
+ try
+  if nummonitorsint > 0 then
+   begin
+    cfocusedmonitornamestr := '';
+    cmonitoractiveworkspacesstr.clear;
+    thismonitorname := '';
+    t:=tprocess.create(nil);
+    t.Executable:='hyprctl';
+    t.Parameters.Clear;
+    t.Parameters.Add('monitors');
+    t.Options:=[poUsePipes,poWaitonexit];
+    try
+     t.Execute;
+     s:=tstringlist.Create;
+     try
+      s.LoadFromStream(t.Output);
+      if s.Count > 0 then
+       begin
+        ct := 0;
+        while ct < s.count do
+         begin
+          thisline := s[ct];
+          thisline := trimleft(thisline);
+          thisline := trimright(thisline);
+          if copy(uppercase(thisline),1,7) = 'MONITOR' then
+           begin
+            write_diagnostics('Detected Monitor line from hyprctl monitors command output: '+thisline);
+            // E.g. "Monitor HDMI-A-1 (ID 0):"
+            thisline := stringreplace(thisline,'Monitors:','',[rfreplaceall,rfignorecase]);
+            thisline := stringreplace(thisline,'Monitors','',[rfreplaceall,rfignorecase]);
+            thisline := stringreplace(thisline,'Monitor:','',[rfreplaceall,rfignorecase]);
+            thisline := stringreplace(thisline,'Monitor','',[rfreplaceall,rfignorecase]);
+            thisline := trimleft(thisline);
+            thisline := trimright(thisline);
+            // E.g. "HDMI-A-1 (ID 0):"
+            x := pos(' ',thisline);
+            if x > 0 then
+             begin
+              thisline := copy(thisline,1,x-1);
+             end;
+            thisline := trimleft(thisline);
+            thisline := trimright(thisline);
+            // E.g. "HDMI-A-1".
+            thismonitorname := thisline;
+           end
+           else if copy(uppercase(thisline),1,16) = 'ACTIVE WORKSPACE' then
+           begin
+            if thismonitorname <> '' then
+             begin
+              write_diagnostics('Detected active workspace line from hyprctl monitors command output: '+thisline);
+              // E.g. "active workspace: 1 (1)"
+              thisline := stringreplace(thisline,'active workspace:','',[rfreplaceall,rfignorecase]);
+              thisline := stringreplace(thisline,'active workspace','',[rfreplaceall,rfignorecase]);
+              thisline := trimleft(thisline); thisline := trimright(thisline);
+              // E.g. "1 (1)"
+              x := pos(' ',thisline);
+              if x > 0 then
+               begin
+                thisline := copy(thisline,1,x-1);
+               end;
+              thisline := trimleft(thisline); thisline := trimright(thisline);
+              // E.g. "1".
+              if thisline <> '' then
+               begin
+                // Should have "thismonitorname" in the "monitornamesstr" stringlist:
+                ct1 := 0; found := false;
+                while (ct1 < monitornamesstr.count) and not found do
+                 begin
+                  if monitornamesstr[ct1] = thismonitorname then
+                   begin
+                    found := true;
+                   end
+                   else inc(ct1);
+                 end;
+                if found then
+                 begin
+                  cmonitoractiveworkspacesstr.Add(thisline); // OK, this is the active workspace for this monitor.
+                 end;
+               end;
+             end;
+           end
+           else if copy(uppercase(thisline),1,7) = 'FOCUSED' then
+           begin
+            if thismonitorname <> '' then
+             begin
+              write_diagnostics('Detected focused line from hyprctl monitors command output: '+thisline);
+              // E.g. "focused: no"
+              thisline := stringreplace(thisline,'focused:','',[rfreplaceall,rfignorecase]);
+              thisline := stringreplace(thisline,'focused','',[rfreplaceall,rfignorecase]);
+              thisline := trimleft(thisline); thisline := trimright(thisline);
+              // E.g. "no" or "yes".
+              if uppercase(copy(thisline,1,1)) = 'Y' then // This IS the focused monitor.
+               begin
+                // Should have "thismonitorname" in the "monitornamesstr" stringlist:
+                ct1 := 0; found := false;
+                while (ct1 < monitornamesstr.count) and not found do
+                 begin
+                  if monitornamesstr[ct1] = thismonitorname then
+                   begin
+                    found := true;
+                   end
+                   else inc(ct1);
+                 end;
+                if found then
+                 begin
+                  cfocusedmonitornamestr := thismonitorname;
+                 end;
+               end;
+             end;
+           end;
+          inc(ct);
+         end;
+        // OK, did we get the same number of cmonitoractiveworkspacesstr entries as nummonitorsint, and did we get a "cfocusedmonitorname"?
+        if (cmonitoractiveworkspacesstr.count = nummonitorsint) and (cfocusedmonitornamestr <> '') then
+         begin
+          result := true; // Worked OK, we can use this information.
+          write_diagnostics('Successfully read current monitor focused and active workspaces info. The currently focused monitor is '+cfocusedmonitornamestr+'.');
+         end
+         else
+         begin
+          write_diagnostics('Failed to read current monitor focused and active workspaces info.');
+         end;
+       end;
+     finally
+     s.free;
+     end;
+    finally
+     t.Free;
+    end;
+   end;
+ except
+  on e : exception do
+   begin
+    result := false;
+    write_diagnostics('Error: Failed inside fn_get_current_monitor_focused_and_active_workspaces the error is: '+e.Message);
+   end;
+ end;
+end;
+
 procedure Thyprscreensaver.write_diagnostics(s : string);
 begin
  // If passed a -d parameter then switch on diagnostic_mode to output useful diagnostic info as well as any "error:" type messages (which are always written out):
@@ -666,6 +818,9 @@ begin
   monitornames.Clear;;
   monitorworkspaces := TStringList.create;
   monitorworkspaces.Clear;
+  cfocusedmonitorname := '';
+  cmonitoractiveworkspaces := TStringList.create;
+  cmonitoractiveworkspaces.Clear;
   write_diagnostics('Monitors initialised to 0 monitors.');
 
   AppPath := ExtractFilePath(ParamStr(0));
@@ -716,6 +871,9 @@ begin
    end;
 
   output_monitor_config_info;
+
+  // Find out what the currently focussed monitor is and the active workspaces for each monitor. Don't care if this fails:
+  if fn_get_current_monitor_focused_and_active_workspaces(nummonitors,cfocusedmonitorname,monitornames,cmonitoractiveworkspaces) then;
 
   write_diagnostics(''); write_diagnostics('Checking that it is safe to continue running hyprscreensaver:');
 
@@ -842,20 +1000,40 @@ begin
 
   // Return monitors and workspaces back to "normal":
 
-  // Work through each monitor:
+  // Work through each monitor and set them back to their original workspaces:
+  // Find out what the currently focussed monitor is and the active workspaces for each monitor. Don't care if this fails:
   if not getout then
    begin
-    ct := 0;
-    while ct < nummonitors do
+    if (cfocusedmonitorname <> '') and (cmonitoractiveworkspaces.count = nummonitors) then
      begin
-      thismonitorname := monitornames[ct];
-      // Switch to 1st monitor:
-      if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',thismonitorname,'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
-      write_diagnostics('hyprctl dispatch focusmonitor '+thismonitorname);
-      // Switch that monitor to workspace 1:
-      if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace',inttostr(ct+1),'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
-      write_diagnostics('hyprctl dispatch workspace '+inttostr(ct+1));
-      inc(ct);
+      ct := 0;
+      while ct < nummonitors do
+       begin
+        thismonitorname := monitornames[ct];
+        // Switch to 1st monitor:
+        if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',thismonitorname,'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
+        write_diagnostics('hyprctl dispatch focusmonitor '+thismonitorname);
+        // Switch that monitor to workspace 1:
+        if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace',cmonitoractiveworkspaces[ct],'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
+        write_diagnostics('hyprctl dispatch workspace '+cmonitoractiveworkspaces[ct]);
+        inc(ct);
+       end;
+      if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',cfocusedmonitorname,'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
+     end
+     else // Use defaults:
+     begin
+      ct := 0;
+      while ct < nummonitors do
+       begin
+        thismonitorname := monitornames[ct];
+        // Switch to 1st monitor:
+        if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',thismonitorname,'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
+        write_diagnostics('hyprctl dispatch focusmonitor '+thismonitorname);
+        // Switch that monitor to workspace 1:
+        if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace',inttostr(ct+1),'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
+        write_diagnostics('hyprctl dispatch workspace '+inttostr(ct+1));
+        inc(ct);
+       end;
      end;
    end;
 
@@ -892,10 +1070,12 @@ begin
    end;
  finally
   write_diagnostics('Exiting hyprscreensaver');
-  monitornames.Clear;
-  monitornames.Free;
-  monitorworkspaces.Clear;
-  monitorworkspaces.Free;
+  monitornames.clear;
+  monitornames.free;
+  monitorworkspaces.clear;
+  monitorworkspaces.free;
+  cmonitoractiveworkspaces.clear;
+  cmonitoractiveworkspaces.free;
  end;
 
  // Stop program:
