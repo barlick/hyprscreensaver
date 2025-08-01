@@ -1019,7 +1019,7 @@ begin
        end;
       if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',cfocusedmonitorname,'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
      end
-     else // Use defaults:
+     else // Use default "return moniros to sensible workspaces" method:
      begin
       ct := 0;
       while ct < nummonitors do
