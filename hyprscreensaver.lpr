@@ -1003,7 +1003,7 @@ begin
   // Work through each monitor and set them back to their original workspaces:
   if not getout then
    begin
-    if (cfocusedmonitorname <> '') and (cmonitoractiveworkspaces.count = nummonitors) then
+    if (cfocusedmonitorname <> '') and (cmonitoractiveworkspaces.count = nummonitors) then // If we got this info from "fn_get_current_monitor_focused_and_active_workspaces" OK then use it:
      begin
       ct := 0;
       while ct < nummonitors do

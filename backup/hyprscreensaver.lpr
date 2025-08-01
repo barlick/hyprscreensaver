@@ -1002,7 +1002,7 @@ begin
 
   // Work through each monitor and set them back to their original workspaces:
   if not getout then
-fs   begin
+   begin
     if (cfocusedmonitorname <> '') and (cmonitoractiveworkspaces.count = nummonitors) then
      begin
       ct := 0;
