@@ -40,6 +40,7 @@ type
     function fn_write_hyprscreensaver_conf_file(hyprscreensaver_conf_path_and_filenamestr : string) : boolean; // Write out a hyprscreensaver.conf file.
     procedure write_lastruntime_to_hyprscreensaver_lastruntime_path_and_filename(lastruntimedt : TDateTime; hyprscreensaver_lastruntime_path_and_filenamestr : string);
     function fn_runprocess(Executable,param1,param2,param3,param4,param5 : string; ProcessOptions : TProcessOptions; sleepbeforeexecute : integer) : boolean;
+    function fn_check_package_is_availale(ExpectedErrorResponse,Executable,param1,param2,param3,param4,param5 : string; ProcessOptions : TProcessOptions; sleepbeforeexecute : integer) : boolean;
     function fn_get_monitor_info(var nummonitorsint : integer; var monitornamesstr : TStringList; var monitorworkspacesstr : TStringList) : boolean;
     function fn_get_current_monitor_focused_and_active_workspaces(var nummonitorsint : integer; var cfocusedmonitornamestr : string; var monitornamesstr : TStringList; var cmonitoractiveworkspacesstr : TStringList) : boolean;
     procedure write_diagnostics(s : string);
@@ -511,6 +512,73 @@ begin
  end;
 end;
 
+function Thyprscreensaver.fn_check_package_is_availale(ExpectedErrorResponse,Executable,param1,param2,param3,param4,param5 : string; ProcessOptions : TProcessOptions; sleepbeforeexecute : integer) : boolean;
+var
+ t : TProcess;
+ s : TStringList;
+ ct : integer;
+ thisline : string;
+begin
+ result := false;
+ if sleepbeforeexecute > 0 then sleep(sleepbeforeexecute);
+ // No running so start it.
+ try
+  t := TProcess.Create(nil);
+  try
+   t.Executable := Executable;
+   t.Parameters.Clear;
+   if param1 <> '' then t.Parameters.Add(param1);
+   if param2 <> '' then t.Parameters.Add(param2);
+   if param3 <> '' then t.Parameters.Add(param3);
+   if param4 <> '' then t.Parameters.Add(param4);
+   if param5 <> '' then t.Parameters.Add(param5);
+   t.Options := ProcessOptions;
+   t.Execute;
+   s:=tstringlist.Create;
+   try
+    try
+     s.LoadFromStream(t.Output);
+     if s.Count > 0 then
+      begin
+       result := true; // got something.
+       ct := 0;
+       while ct < s.count do
+        begin
+         thisline := uppercase(s[ct]);
+         if pos(uppercase(ExpectedErrorResponse),thisline) > 0 then
+          begin
+           result := false;
+           write_diagnostics('Error: fn_check_package_is_availale checking '+Executable+' returned "'+ExpectedErrorResponse+'". Is '+Executable+' installed?');
+          end;
+         inc(ct);
+        end;
+       if result then
+        begin
+         write_diagnostics('fn_check_package_is_availale checking '+Executable+' indicates that '+Executable+' is installed OK.');
+        end;
+      end;
+    except
+     on e : exception do
+      begin
+       result := false;
+       write_diagnostics('Error: Failed to parse output in fn_check_package_is_availale when checking '+Executable+' the error is: '+e.Message+'. Is '+Executable+' installed?');
+      end;
+    end;
+   finally
+   s.free;
+   end;
+  finally
+   t.Free;
+  end;
+ except
+  on e : exception do
+   begin
+    result := false;
+    write_diagnostics('Error: Failed inside fn_check_package_is_availale when checking executable '+Executable+' the error is: '+e.Message+' . Is '+Executable+' installed?');
+   end;
+ end;
+end;
+
 function Thyprscreensaver.fn_get_monitor_info(var nummonitorsint : integer; var monitornamesstr : TStringList; var monitorworkspacesstr : TStringList) : boolean;
 var
  t:TProcess;
@@ -812,258 +880,266 @@ begin
  getout := false;
 
  try
-  write_diagnostics(''); write_diagnostics('Initializing variables:');
-  nummonitors := 0;
-  monitornames := TStringList.create;
-  monitornames.Clear;;
-  monitorworkspaces := TStringList.create;
-  monitorworkspaces.Clear;
-  cfocusedmonitorname := '';
-  cmonitoractiveworkspaces := TStringList.create;
-  cmonitoractiveworkspaces.Clear;
-  write_diagnostics('Monitors initialised to 0 monitors.');
+  write_diagnostics('Checking that required packages are installed:');
+  if not fn_check_package_is_availale('command not found','hyprctl','monitors','','','','',[poUsePipes],0) then getout := true;
+  if not fn_check_package_is_availale('command not found','swayidle','-h','','','','',[poUsePipes],0) then getout := true;
+  if not fn_check_package_is_availale('command not found','ffplay','-version','','','','',[poUsePipes],0) then getout := true;
 
-  AppPath := ExtractFilePath(ParamStr(0));
-  AppPath := IncludeTrailingPathDelimiter(AppPath);
-  write_diagnostics('AppPath: '+AppPath);
-
-  HomeDir := GetUserDir;
-  HomeDir := IncludeTrailingPathDelimiter(HomeDir);
-  write_diagnostics('HomeDir: '+HomeDir);
-
-  swayidledelayseconds := '60'; // Default is 1 minute.
-  write_diagnostics('swayidledelayseconds: '+swayidledelayseconds);
-
-  hyprscreensaver_conf_path_and_filename := HomeDir+'.config/hypr/hyprscreensaver.conf'; // Default.
-  write_diagnostics('hyprscreensaver_conf_path_and_filename defaulted to: '+hyprscreensaver_conf_path_and_filename);
-  // If run using the -c <folder and filename of hyprscreensaver.conf> parameter then use that to override the default hyprscreensaver_conf_path_and_filename:
-  c_parameters := fn_read_c_parameter_override_for_hyprscreensaver_conf_path_and_filename;
-  if c_parameters <> '' then write_diagnostics('Detected -c <path> run parameter: -c '+c_parameters) else write_diagnostics('No -c <path> run parameter detected.');
-  if c_parameters <> '' then hyprscreensaver_conf_path_and_filename := c_parameters;
-  write_diagnostics('hyprscreensaver_conf_path_and_filename is now: '+hyprscreensaver_conf_path_and_filename);
-
-  // We alse need a "hyprscreensaver.dat" file on the same path as hyprscreensaver.conf to store the "last run time":
-  hyprscreensaver_lastruntime_path_and_filename := extractfilepath(hyprscreensaver_conf_path_and_filename) + 'hyperscreensaver.dat';
-  write_diagnostics('hyprscreensaver_lastruntime_path_and_filename: '+hyprscreensaver_lastruntime_path_and_filename);
-
-  screensaver_folder := HomeDir+'.config/hypr/'; // Default.
-  write_diagnostics('screensaver_folder defaulted to: '+screensaver_folder);
-  screensaver_filename := 'screensaver.mp4'; // Default.
-  write_diagnostics('screensaver_filename defaulted to: '+screensaver_filename);
-
-  write_diagnostics(''); write_diagnostics('Reading the hyprscreensaver.conf file:');
-  // Generate default hyprscreensaver.conf file if it doesn't exist:
-  if not fileexists(hyprscreensaver_conf_path_and_filename) then
-    begin
-     if not fn_write_hyprscreensaver_conf_file(hyprscreensaver_conf_path_and_filename) then getout := true; // If hyprscreensaver.conf not present then create it with the default parameter variables.
-    end;
-  // Read hyprscreensaver.conf to set all of the above key variables to the values stored in it:
   if not getout then
    begin
-    if not fn_read_hyprscreensaver_conf(hyprscreensaver_conf_path_and_filename) then getout := true;
-   end;
+    write_diagnostics(''); write_diagnostics('Initializing variables:');
+    nummonitors := 0;
+    monitornames := TStringList.create;
+    monitornames.Clear;;
+    monitorworkspaces := TStringList.create;
+    monitorworkspaces.Clear;
+    cfocusedmonitorname := '';
+    cmonitoractiveworkspaces := TStringList.create;
+    cmonitoractiveworkspaces.Clear;
+    write_diagnostics('Monitors initialised to 0 monitors.');
 
-  // Check that the monitors were set up corectly by fn_read_hyprscreensaver_conf:
-  if not getout then
-   begin
-    if nummonitors <= 0 then getout := true;
-    if nummonitors <= 0 then write_diagnostics('Error: Number of monitors = 0. Unable to continue.');
-   end;
+    AppPath := ExtractFilePath(ParamStr(0));
+    AppPath := IncludeTrailingPathDelimiter(AppPath);
+    write_diagnostics('AppPath: '+AppPath);
 
-  output_monitor_config_info;
+    HomeDir := GetUserDir;
+    HomeDir := IncludeTrailingPathDelimiter(HomeDir);
+    write_diagnostics('HomeDir: '+HomeDir);
 
-  // Find out what the currently focussed monitor is and the active workspaces for each monitor. Don't care if this fails:
-  if fn_get_current_monitor_focused_and_active_workspaces(nummonitors,cfocusedmonitorname,monitornames,cmonitoractiveworkspaces) then;
+    swayidledelayseconds := '60'; // Default is 1 minute.
+    write_diagnostics('swayidledelayseconds: '+swayidledelayseconds);
 
-  write_diagnostics(''); write_diagnostics('Checking that it is safe to continue running hyprscreensaver:');
+    hyprscreensaver_conf_path_and_filename := HomeDir+'.config/hypr/hyprscreensaver.conf'; // Default.
+    write_diagnostics('hyprscreensaver_conf_path_and_filename defaulted to: '+hyprscreensaver_conf_path_and_filename);
+    // If run using the -c <folder and filename of hyprscreensaver.conf> parameter then use that to override the default hyprscreensaver_conf_path_and_filename:
+    c_parameters := fn_read_c_parameter_override_for_hyprscreensaver_conf_path_and_filename;
+    if c_parameters <> '' then write_diagnostics('Detected -c <path> run parameter: -c '+c_parameters) else write_diagnostics('No -c <path> run parameter detected.');
+    if c_parameters <> '' then hyprscreensaver_conf_path_and_filename := c_parameters;
+    write_diagnostics('hyprscreensaver_conf_path_and_filename is now: '+hyprscreensaver_conf_path_and_filename);
 
-  // Do we have valid settings read from hyprscreensaver.conf?
-  if screensaver_folder = '' then begin getout := true; write_diagnostics('Error: screensaver_folder is not defined. Please check your screensaver_folder setting in '+hyprscreensaver_conf_path_and_filename+'.'); end;
-  if screensaver_filename = '' then begin getout := true; write_diagnostics('Error: screensaver_filename is not defined. Please check your screensaver_filename setting in '+hyprscreensaver_conf_path_and_filename+'.'); end;
-  if not getout and not fileexists(screensaver_folder+screensaver_filename) then begin getout := true; write_diagnostics('Error: The selected screensaver video file '+screensaver_folder+screensaver_filename+' does not exist.'); end;
+    // We alse need a "hyprscreensaver.dat" file on the same path as hyprscreensaver.conf to store the "last run time":
+    hyprscreensaver_lastruntime_path_and_filename := extractfilepath(hyprscreensaver_conf_path_and_filename) + 'hyperscreensaver.dat';
+    write_diagnostics('hyprscreensaver_lastruntime_path_and_filename: '+hyprscreensaver_lastruntime_path_and_filename);
 
-  // Is the difference between "now" (lastruntime) and the last run time read from the hyprscreensaver.dat file (thislastruntime) < 10 seconds then it's a "misfire" so get out.
-  if not getout then
-   begin
-    lastruntime := now;
-    thislastruntime := fn_read_hyprscreensaver_lastruntime(hyprscreensaver_lastruntime_path_and_filename);
-    if (thislastruntime <> 0) and (lastruntime - thislastruntime > 0) and (lastruntime - thislastruntime < 0.000115740740740741) then // 10 seconds = 0.000115740740740741
+    screensaver_folder := HomeDir+'.config/hypr/'; // Default.
+    write_diagnostics('screensaver_folder defaulted to: '+screensaver_folder);
+    screensaver_filename := 'screensaver.mp4'; // Default.
+    write_diagnostics('screensaver_filename defaulted to: '+screensaver_filename);
+
+    write_diagnostics(''); write_diagnostics('Reading the hyprscreensaver.conf file:');
+    // Generate default hyprscreensaver.conf file if it doesn't exist:
+    if not fileexists(hyprscreensaver_conf_path_and_filename) then
+      begin
+       if not fn_write_hyprscreensaver_conf_file(hyprscreensaver_conf_path_and_filename) then getout := true; // If hyprscreensaver.conf not present then create it with the default parameter variables.
+      end;
+    // Read hyprscreensaver.conf to set all of the above key variables to the values stored in it:
+    if not getout then
      begin
-      getout := true;
-      write_diagnostics('Last hyprscreensaver run time read from '+hyprscreensaver_lastruntime_path_and_filename+' is '+datetimetostr(thislastruntime)+' which is < 10 seconds from now so exiting.');
+      if not fn_read_hyprscreensaver_conf(hyprscreensaver_conf_path_and_filename) then getout := true;
      end;
-   end;
 
-  // Is hyprscreensaver already running? If so then quit (getout=true):
-  if not getout then
-   begin
-    if fn_GetNumberOfAppInstancesRunnnig('hyprscreensaver') > 1 then
+    // Check that the monitors were set up corectly by fn_read_hyprscreensaver_conf:
+    if not getout then
      begin
-      getout := true;
-      write_diagnostics('fn_GetNumberOfAppInstancesRunnnig of hyprscreensaver > 1 so hyprscreensaver is already running so exiting.');
+      if nummonitors <= 0 then getout := true;
+      if nummonitors <= 0 then write_diagnostics('Error: Number of monitors = 0. Unable to continue.');
      end;
-   end;
 
-  // Is swayidle NOT running? If so then start it up and then quit (getout=true):
-  if not getout then
-   begin
-    if fn_GetNumberOfAppInstancesRunnnig('swayidle') = 0 then
+    output_monitor_config_info;
+
+    // Find out what the currently focussed monitor is and the active workspaces for each monitor. Don't care if this fails:
+    if fn_get_current_monitor_focused_and_active_workspaces(nummonitors,cfocusedmonitorname,monitornames,cmonitoractiveworkspaces) then;
+
+    write_diagnostics(''); write_diagnostics('Checking that it is safe to continue running hyprscreensaver:');
+
+    // Do we have valid settings read from hyprscreensaver.conf?
+    if screensaver_folder = '' then begin getout := true; write_diagnostics('Error: screensaver_folder is not defined. Please check your screensaver_folder setting in '+hyprscreensaver_conf_path_and_filename+'.'); end;
+    if screensaver_filename = '' then begin getout := true; write_diagnostics('Error: screensaver_filename is not defined. Please check your screensaver_filename setting in '+hyprscreensaver_conf_path_and_filename+'.'); end;
+    if not getout and not fileexists(screensaver_folder+screensaver_filename) then begin getout := true; write_diagnostics('Error: The selected screensaver video file '+screensaver_folder+screensaver_filename+' does not exist.'); end;
+
+    // Is the difference between "now" (lastruntime) and the last run time read from the hyprscreensaver.dat file (thislastruntime) < 10 seconds then it's a "misfire" so get out.
+    if not getout then
      begin
-      write_diagnostics('fn_GetNumberOfAppInstancesRunnnig of swayidle = 0 so swayidle is not running so will run swayidle and then exit:');
+      lastruntime := now;
+      thislastruntime := fn_read_hyprscreensaver_lastruntime(hyprscreensaver_lastruntime_path_and_filename);
+      if (thislastruntime <> 0) and (lastruntime - thislastruntime > 0) and (lastruntime - thislastruntime < 0.000115740740740741) then // 10 seconds = 0.000115740740740741
+       begin
+        getout := true;
+        write_diagnostics('Last hyprscreensaver run time read from '+hyprscreensaver_lastruntime_path_and_filename+' is '+datetimetostr(thislastruntime)+' which is < 10 seconds from now so exiting.');
+       end;
+     end;
+
+    // Is hyprscreensaver already running? If so then quit (getout=true):
+    if not getout then
+     begin
+      if fn_GetNumberOfAppInstancesRunnnig('hyprscreensaver') > 1 then
+       begin
+        getout := true;
+        write_diagnostics('fn_GetNumberOfAppInstancesRunnnig of hyprscreensaver > 1 so hyprscreensaver is already running so exiting.');
+       end;
+     end;
+
+    // Is swayidle NOT running? If so then start it up and then quit (getout=true):
+    if not getout then
+     begin
+      if fn_GetNumberOfAppInstancesRunnnig('swayidle') = 0 then
+       begin
+        write_diagnostics('fn_GetNumberOfAppInstancesRunnnig of swayidle = 0 so swayidle is not running so will run swayidle and then exit:');
+        if c_parameters <> '' then
+         begin
+          if not fn_runprocess('hyprctl','dispatch','exec','swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver -c '+c_parameters+'"','','',[poUsePipes],0) then getout := true;
+          write_diagnostics('Called: fn_runprocess(hyprctl,dispatch,exec,swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver -c '+c_parameters+'",,,[poUsePipes],0)');
+         end
+         else
+         begin
+          if not fn_runprocess('hyprctl','dispatch','exec','swayidle -w timeout '+swayidledelayseconds+' '+AppPath+'hyprscreensaver','','',[poUsePipes],0) then getout := true;
+          write_diagnostics('Called: fn_runprocess(hyprctl,dispatch,exec,swayidle -w timeout '+swayidledelayseconds+' '+AppPath+'hyprscreensaver,,,[poUsePipes],0)');
+         end;
+        getout := true;
+       end;
+     end;
+
+    // Kill swayidle to stop it running until this instance of hyprscreensaver has finished.
+    if not getout then
+     begin
+      if not fn_runprocess('pkill','swayidle','','','','',[poWaitOnExit, poUsePipes],0) then
+       begin
+        getout := true;
+        write_diagnostics('Error: Failed to run "pkill swayidle" to kill the swayidle process. Unable to continue,');
+       end
+       else
+       begin
+        write_diagnostics('Ran "pkill swayidle" to kill the swayidle process.');
+       end;
+     end;
+
+    // Switch monitors to high workspaces and run ffplay to display the screensaver video on each workspace:
+
+    // Work through each monitor:
+    if not getout then
+     begin
+      write_diagnostics(''); write_diagnostics('Launching screensaver(s):');
+      ct := 0;
+      while ct < nummonitors do
+       begin
+        thismonitorname := monitornames[ct];
+        thismonitorworkspace := monitorworkspaces[ct];
+        // Switch to this monitor:
+        if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',thismonitorname,'','',[poWaitOnExit, poUsePipes],100) then getout := true; end;
+        write_diagnostics('hyprctl dispatch focusmonitor '+thismonitorname);
+        // Switch this monitor to its designated screensaver workspace:
+        if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace',thismonitorworkspace,'','',[poWaitOnExit, poUsePipes],100) then getout := true; end;
+        write_diagnostics('hyprctl dispatch workspace '+thismonitorworkspace);
+        // Launch screensaver video in ffplay on this monitor on its designated workspace:
+        if not getout then begin if not fn_runprocess('hyprctl','dispatch','exec','ffplay "'+screensaver_folder+screensaver_filename+'" -fs -exitonkeydown -exitonmousedown -loop 0','','',[poUsePipes],200) then getout := true; end;
+        write_diagnostics('hyprctl dispatch exec ffplay "'+screensaver_folder+screensaver_filename+'" -fs -exitonkeydown -exitonmousedown -loop 0');
+        inc(ct);
+       end;
+     end;
+
+    // Main loop: Wait for one or more of the ffplay screensaver video player processes to close:
+    if not getout then
+     begin
+      write_diagnostics(''); write_diagnostics('Main loop. Waiting for one of the ffplay screensaver instances to quit:');
+      sleep(200);
+      finished := false;
+      InitialNumInstancesScreensaverApp := fn_GetNumberOfAppInstancesRunnnig('ffplay');
+      write_diagnostics('fn_GetNumberOfAppInstancesRunnnig of ffplay = '+inttostr(InitialNumInstancesScreensaverApp)+' if 0 (non are running) then we will exit.');
+      if InitialNumInstancesScreensaverApp > 0 then // There should be at least one instance of "ffplay" running. If not then we are finished.
+       begin
+        repeat
+         sleep(400);
+         if (InitialNumInstancesScreensaverApp <> fn_GetNumberOfAppInstancesRunnnig('ffplay')) then
+          begin
+          write_diagnostics('fn_GetNumberOfAppInstancesRunnnig of "ffplay" = has changed (one or more of them have closed) so will exit.');
+          finished := true;
+          end;
+        until finished;
+       end;
+     end;
+
+    write_diagnostics(''); write_diagnostics('Preparing to exit:');
+    // Kill all remaining ffplay processes:
+    if not getout then
+     begin
+      if not fn_runprocess('pkill','ffplay','','','','',[poWaitOnExit, poUsePipes],200) then
+       begin
+        getout := true;
+        write_diagnostics('Error: Failed to run pkill ffplay. Will now exit.');
+       end
+       else
+       begin
+        write_diagnostics('Ran pkill ffplay to ensure that any remaining ffplay screensavers are closed.');
+       end;
+     end;
+
+    // Return monitors and workspaces back to "normal":
+
+    // Work through each monitor and set them back to their original workspaces:
+    if not getout then
+     begin
+      if (cfocusedmonitorname <> '') and (cmonitoractiveworkspaces.count = nummonitors) then // If we got this info from "fn_get_current_monitor_focused_and_active_workspaces" OK then use it:
+       begin
+        ct := 0;
+        while ct < nummonitors do
+         begin
+          thismonitorname := monitornames[ct];
+          // Switch to 1st monitor:
+          if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',thismonitorname,'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
+          write_diagnostics('hyprctl dispatch focusmonitor '+thismonitorname);
+          // Switch that monitor to workspace 1:
+          if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace',cmonitoractiveworkspaces[ct],'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
+          write_diagnostics('hyprctl dispatch workspace '+cmonitoractiveworkspaces[ct]);
+          inc(ct);
+         end;
+        if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',cfocusedmonitorname,'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
+       end
+       else // Use default "return moniros to sensible workspaces" method:
+       begin
+        ct := 0;
+        while ct < nummonitors do
+         begin
+          thismonitorname := monitornames[ct];
+          // Switch to 1st monitor:
+          if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',thismonitorname,'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
+          write_diagnostics('hyprctl dispatch focusmonitor '+thismonitorname);
+          // Switch that monitor to workspace 1:
+          if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace',inttostr(ct+1),'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
+          write_diagnostics('hyprctl dispatch workspace '+inttostr(ct+1));
+          inc(ct);
+         end;
+       end;
+     end;
+
+    // Write out the hyprscreensaver.conf with updated values (mainly want "Last run time"):
+    if not getout then write_lastruntime_to_hyprscreensaver_lastruntime_path_and_filename(now,hyprscreensaver_lastruntime_path_and_filename);
+
+    // Re-start swayidle:
+    if not getout then
+     begin
       if c_parameters <> '' then
        begin
-        if not fn_runprocess('hyprctl','dispatch','exec','swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver -c '+c_parameters+'"','','',[poUsePipes],0) then getout := true;
-        write_diagnostics('Called: fn_runprocess(hyprctl,dispatch,exec,swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver -c '+c_parameters+'",,,[poUsePipes],0)');
+        if not fn_runprocess('hyprctl','dispatch','exec','swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver -c '+c_parameters+'"','','',[poUsePipes],0) then
+         begin
+          getout := true;
+          write_diagnostics('Error: Failed to restart swayidle via a call to fn_runprocess(hyprctl,dispatch,exec,swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver -c '+c_parameters+'",,,[poUsePipes],0)');
+         end
+         else
+         begin
+          write_diagnostics('Restarted swayidle via a call to fn_runprocess(hyprctl,dispatch,exec,swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver -c '+c_parameters+'",,,[poUsePipes],0)');
+         end;
        end
        else
        begin
-        if not fn_runprocess('hyprctl','dispatch','exec','swayidle -w timeout '+swayidledelayseconds+' '+AppPath+'hyprscreensaver','','',[poUsePipes],0) then getout := true;
-        write_diagnostics('Called: fn_runprocess(hyprctl,dispatch,exec,swayidle -w timeout '+swayidledelayseconds+' '+AppPath+'hyprscreensaver,,,[poUsePipes],0)');
-       end;
-      getout := true;
-     end;
-   end;
-
-  // Kill swayidle to stop it running until this instance of hyprscreensaver has finished.
-  if not getout then
-   begin
-    if not fn_runprocess('pkill','swayidle','','','','',[poWaitOnExit, poUsePipes],0) then
-     begin
-      getout := true;
-      write_diagnostics('Error: Failed to run "pkill swayidle" to kill the swayidle process. Unable to continue,');
-     end
-     else
-     begin
-      write_diagnostics('Ran "pkill swayidle" to kill the swayidle process.');
-     end;
-   end;
-
-  // Switch monitors to high workspaces and run ffplay to display the screensaver video on each workspace:
-
-  // Work through each monitor:
-  if not getout then
-   begin
-    write_diagnostics(''); write_diagnostics('Launching screensaver(s):');
-    ct := 0;
-    while ct < nummonitors do
-     begin
-      thismonitorname := monitornames[ct];
-      thismonitorworkspace := monitorworkspaces[ct];
-      // Switch to this monitor:
-      if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',thismonitorname,'','',[poWaitOnExit, poUsePipes],100) then getout := true; end;
-      write_diagnostics('hyprctl dispatch focusmonitor '+thismonitorname);
-      // Switch this monitor to its designated screensaver workspace:
-      if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace',thismonitorworkspace,'','',[poWaitOnExit, poUsePipes],100) then getout := true; end;
-      write_diagnostics('hyprctl dispatch workspace '+thismonitorworkspace);
-      // Launch screensaver video in ffplay on this monitor on its designated workspace:
-      if not getout then begin if not fn_runprocess('hyprctl','dispatch','exec','ffplay "'+screensaver_folder+screensaver_filename+'" -fs -exitonkeydown -exitonmousedown -loop 0','','',[poUsePipes],200) then getout := true; end;
-      write_diagnostics('hyprctl dispatch exec ffplay "'+screensaver_folder+screensaver_filename+'" -fs -exitonkeydown -exitonmousedown -loop 0');
-      inc(ct);
-     end;
-   end;
-
-  // Main loop: Wait for one or more of the ffplay screensaver video player processes to close:
-  if not getout then
-   begin
-    write_diagnostics(''); write_diagnostics('Main loop. Waiting for one of the ffplay screensaver instances to quit:');
-    sleep(200);
-    finished := false;
-    InitialNumInstancesScreensaverApp := fn_GetNumberOfAppInstancesRunnnig('ffplay');
-    write_diagnostics('fn_GetNumberOfAppInstancesRunnnig of ffplay = '+inttostr(InitialNumInstancesScreensaverApp)+' if 0 (non are running) then we will exit.');
-    if InitialNumInstancesScreensaverApp > 0 then // There should be at least one instance of "ffplay" running. If not then we are finished.
-     begin
-      repeat
-       sleep(400);
-       if (InitialNumInstancesScreensaverApp <> fn_GetNumberOfAppInstancesRunnnig('ffplay')) then
-        begin
-        write_diagnostics('fn_GetNumberOfAppInstancesRunnnig of "ffplay" = has changed (one or more of them have closed) so will exit.');
-        finished := true;
-        end;
-      until finished;
-     end;
-   end;
-
-  write_diagnostics(''); write_diagnostics('Preparing to exit:');
-  // Kill all remaining ffplay processes:
-  if not getout then
-   begin
-    if not fn_runprocess('pkill','ffplay','','','','',[poWaitOnExit, poUsePipes],200) then
-     begin
-      getout := true;
-      write_diagnostics('Error: Failed to run pkill ffplay. Will now exit.');
-     end
-     else
-     begin
-      write_diagnostics('Ran pkill ffplay to ensure that any remaining ffplay screensavers are closed.');
-     end;
-   end;
-
-  // Return monitors and workspaces back to "normal":
-
-  // Work through each monitor and set them back to their original workspaces:
-  if not getout then
-   begin
-    if (cfocusedmonitorname <> '') and (cmonitoractiveworkspaces.count = nummonitors) then // If we got this info from "fn_get_current_monitor_focused_and_active_workspaces" OK then use it:
-     begin
-      ct := 0;
-      while ct < nummonitors do
-       begin
-        thismonitorname := monitornames[ct];
-        // Switch to 1st monitor:
-        if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',thismonitorname,'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
-        write_diagnostics('hyprctl dispatch focusmonitor '+thismonitorname);
-        // Switch that monitor to workspace 1:
-        if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace',cmonitoractiveworkspaces[ct],'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
-        write_diagnostics('hyprctl dispatch workspace '+cmonitoractiveworkspaces[ct]);
-        inc(ct);
-       end;
-      if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',cfocusedmonitorname,'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
-     end
-     else // Use default "return moniros to sensible workspaces" method:
-     begin
-      ct := 0;
-      while ct < nummonitors do
-       begin
-        thismonitorname := monitornames[ct];
-        // Switch to 1st monitor:
-        if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',thismonitorname,'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
-        write_diagnostics('hyprctl dispatch focusmonitor '+thismonitorname);
-        // Switch that monitor to workspace 1:
-        if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace',inttostr(ct+1),'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
-        write_diagnostics('hyprctl dispatch workspace '+inttostr(ct+1));
-        inc(ct);
-       end;
-     end;
-   end;
-
-  // Write out the hyprscreensaver.conf with updated values (mainly want "Last run time"):
-  if not getout then write_lastruntime_to_hyprscreensaver_lastruntime_path_and_filename(now,hyprscreensaver_lastruntime_path_and_filename);
-
-  // Re-start swayidle:
-  if not getout then
-   begin
-    if c_parameters <> '' then
-     begin
-      if not fn_runprocess('hyprctl','dispatch','exec','swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver -c '+c_parameters+'"','','',[poUsePipes],0) then
-       begin
-        getout := true;
-        write_diagnostics('Error: Failed to restart swayidle via a call to fn_runprocess(hyprctl,dispatch,exec,swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver -c '+c_parameters+'",,,[poUsePipes],0)');
-       end
-       else
-       begin
-        write_diagnostics('Restarted swayidle via a call to fn_runprocess(hyprctl,dispatch,exec,swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver -c '+c_parameters+'",,,[poUsePipes],0)');
-       end;
-     end
-     else
-     begin
-      if not fn_runprocess('hyprctl','dispatch','exec','swayidle -w timeout '+swayidledelayseconds+' '+AppPath+'hyprscreensaver','','',[poUsePipes],0) then
-       begin
-        getout := true;
-        write_diagnostics('Error: Failed to restart swayidle via a call to fn_runprocess(hyprctl,dispatch,exec,swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver,,,[poUsePipes],0)');
-       end
-       else
-       begin
-        write_diagnostics('Restarted swayidle via a call to fn_runprocess(hyprctl,dispatch,exec,swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver,,,[poUsePipes],0)');
+        if not fn_runprocess('hyprctl','dispatch','exec','swayidle -w timeout '+swayidledelayseconds+' '+AppPath+'hyprscreensaver','','',[poUsePipes],0) then
+         begin
+          getout := true;
+          write_diagnostics('Error: Failed to restart swayidle via a call to fn_runprocess(hyprctl,dispatch,exec,swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver,,,[poUsePipes],0)');
+         end
+         else
+         begin
+          write_diagnostics('Restarted swayidle via a call to fn_runprocess(hyprctl,dispatch,exec,swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver,,,[poUsePipes],0)');
+         end;
        end;
      end;
    end;
