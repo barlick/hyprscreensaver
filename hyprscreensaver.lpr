@@ -299,7 +299,7 @@ begin
           x := pos('=',temp);
           if x > 0 then
            begin
-            temp := copy(temp,x+1,length(temp)); // Example: HDMI-A-1 run_screensaver_on_workspace = 8
+            temp := copy(temp,x+1,length(temp)); // Example: HDMI-A-1 run_screensaver_on_workspace = 8.
             temp := trimleft(temp); temp := trimright(temp);
             x := pos(' ',temp);
             if x > 0 then
