@@ -882,9 +882,14 @@ begin
  try
   write_diagnostics('Checking that required packages are installed:');
   if not fn_check_package_is_availale('command not found','hyprctl','monitors','','','','',[poUsePipes],0) then getout := true;
-  if not fn_check_package_is_availale('command not found','swayidle','-h','','','','',[poUsePipes],0) then getout := true;
   if not fn_check_package_is_availale('command not found','ffplay','-version','','','','',[poUsePipes],0) then getout := true;
-
+  (*
+  if fn_GetNumberOfAppInstancesRunnnig('swayidle') = 0 then
+   begin
+    if not fn_check_package_is_availale('command not found','swayidle','-h','','','','',[poUsePipes],0) then getout := true;
+    if not fn_runprocess('pkill','swayidle','','','','',[poWaitOnExit, poUsePipes],0) then;
+   end;
+  *)
   if not getout then
    begin
     write_diagnostics(''); write_diagnostics('Initializing variables:');
