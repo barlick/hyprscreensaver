@@ -40,7 +40,7 @@ type
     function fn_write_hyprscreensaver_conf_file(hyprscreensaver_conf_path_and_filenamestr : string) : boolean; // Write out a hyprscreensaver.conf file.
     procedure write_lastruntime_to_hyprscreensaver_lastruntime_path_and_filename(lastruntimedt : TDateTime; hyprscreensaver_lastruntime_path_and_filenamestr : string);
     function fn_runprocess(Executable,param1,param2,param3,param4,param5 : string; ProcessOptions : TProcessOptions; sleepbeforeexecute : integer) : boolean;
-    function fn_check_package_is_availale(ExpectedErrorResponse,Executable,param1,param2,param3,param4,param5 : string; ProcessOptions : TProcessOptions; sleepbeforeexecute : integer) : boolean;
+    function fn_check_package_is_available(ExpectedErrorResponse,Executable,param1,param2,param3,param4,param5 : string; ProcessOptions : TProcessOptions; sleepbeforeexecute : integer) : boolean;
     function fn_get_monitor_info(var nummonitorsint : integer; var monitornamesstr : TStringList; var monitorworkspacesstr : TStringList) : boolean;
     function fn_get_current_monitor_focused_and_active_workspaces(var nummonitorsint : integer; var cfocusedmonitornamestr : string; var monitornamesstr : TStringList; var cmonitoractiveworkspacesstr : TStringList) : boolean;
     procedure write_diagnostics(s : string);
@@ -57,51 +57,42 @@ var
 begin
  result := 0;
  t:=tprocess.create(nil);
- t.Executable:='ps';
- t.Parameters.Clear;
- t.Parameters.Add('-C');
- t.Parameters.Add(cmd);
- t.Options:=[poUsePipes,poWaitonexit];
+ s:=tstringlist.Create;
  try
   try
+   t.Executable:='ps';
+   t.Parameters.Clear;
+   t.Parameters.Add('-C');
+   t.Parameters.Add(cmd);
+   t.Options:=[poUsePipes,poWaitonexit];
    t.Execute;
+   s.LoadFromStream(t.Output);
+   if s.Count > 0 then
+    begin
+     numinstances := 0;
+     cmd := uppercase(cmd);
+     ct := 0;
+     while ct < s.count do
+      begin
+       thisline := uppercase(s[ct]);
+       if pos(cmd,thisline) > 0 then
+        begin
+         inc(numinstances);
+        end;
+       inc(ct);
+      end;
+     result := numinstances;
+    end;
   except
    on e : exception do
     begin
-     write_diagnostics('Error: Failed to run pc -C '+cmd+' error is: '+e.Message);
+     result := 0;
+     write_diagnostics('Error: Failed to parse output from pc -C '+cmd+' error is: '+e.Message);
     end;
   end;
-  s:=tstringlist.Create;
-  try
-   try
-    s.LoadFromStream(t.Output);
-    if s.Count > 0 then
-     begin
-      numinstances := 0;
-      cmd := uppercase(cmd);
-      ct := 0;
-      while ct < s.count do
-       begin
-        thisline := uppercase(s[ct]);
-        if pos(cmd,thisline) > 0 then
-         begin
-          inc(numinstances);
-         end;
-        inc(ct);
-       end;
-      result := numinstances;
-     end;
-   except
-    on e : exception do
-     begin
-      result := 0;
-      write_diagnostics('Error: Failed to parse output from pc -C '+cmd+' error is: '+e.Message);
-     end;
-   end;
-  finally
-  s.free;
-  end;
  finally
+  s.clear;
+  s.free;
   t.Free;
  end;
 end;
@@ -485,10 +476,9 @@ var
  Process : TProcess;
 begin
  result := false;
- if sleepbeforeexecute > 0 then sleep(sleepbeforeexecute);
- // No running so start it.
+ Process := TProcess.Create(nil);
  try
-  Process := TProcess.Create(nil);
+  if sleepbeforeexecute > 0 then sleep(sleepbeforeexecute);
   try
    Process.Executable := Executable;
    Process.Parameters.Clear;
@@ -500,19 +490,19 @@ begin
    Process.Options := ProcessOptions;
    Process.Execute;
    result := true;
-  finally
-   Process.Free;
+  except
+   on e : exception do
+    begin
+     result := false;
+     write_diagnostics('Error: Failed inside fn_runprocess using executable '+Executable+' the error is: '+e.Message);
+    end;
   end;
- except
-  on e : exception do
-   begin
-    result := false;
-    write_diagnostics('Error: Failed inside fn_runprocess using executable '+Executable+' the error is: '+e.Message);
-   end;
+ finally
+  Process.Free;
  end;
 end;
 
-function Thyprscreensaver.fn_check_package_is_availale(ExpectedErrorResponse,Executable,param1,param2,param3,param4,param5 : string; ProcessOptions : TProcessOptions; sleepbeforeexecute : integer) : boolean;
+function Thyprscreensaver.fn_check_package_is_available(ExpectedErrorResponse,Executable,param1,param2,param3,param4,param5 : string; ProcessOptions : TProcessOptions; sleepbeforeexecute : integer) : boolean;
 var
  t : TProcess;
  s : TStringList;
@@ -520,10 +510,10 @@ var
  thisline : string;
 begin
  result := false;
- if sleepbeforeexecute > 0 then sleep(sleepbeforeexecute);
- // No running so start it.
+ t := TProcess.Create(nil);
+ s:=tstringlist.Create;
  try
-  t := TProcess.Create(nil);
+  if sleepbeforeexecute > 0 then sleep(sleepbeforeexecute);
   try
    t.Executable := Executable;
    t.Parameters.Clear;
@@ -534,48 +524,37 @@ begin
    if param5 <> '' then t.Parameters.Add(param5);
    t.Options := ProcessOptions;
    t.Execute;
-   s:=tstringlist.Create;
-   try
-    try
-     s.LoadFromStream(t.Output);
-     if s.Count > 0 then
+   s.LoadFromStream(t.Output);
+   if s.Count > 0 then
+    begin
+     result := true; // got something.
+     ct := 0;
+     while ct < s.count do
       begin
-       result := true; // got something.
-       ct := 0;
-       while ct < s.count do
+       thisline := uppercase(s[ct]);
+       if pos(uppercase(ExpectedErrorResponse),thisline) > 0 then
         begin
-         thisline := uppercase(s[ct]);
-         if pos(uppercase(ExpectedErrorResponse),thisline) > 0 then
-          begin
-           result := false;
-           write_diagnostics('Error: fn_check_package_is_availale checking '+Executable+' returned "'+ExpectedErrorResponse+'". Is '+Executable+' installed?');
-          end;
-         inc(ct);
+         result := false;
+         write_diagnostics('Error: fn_check_package_is_available checking '+Executable+' returned "'+ExpectedErrorResponse+'". Is '+Executable+' installed?');
         end;
-       if result then
-        begin
-         write_diagnostics('fn_check_package_is_availale checking '+Executable+' indicates that '+Executable+' is installed OK.');
-        end;
+       inc(ct);
       end;
-    except
-     on e : exception do
+     if result then
       begin
-       result := false;
-       write_diagnostics('Error: Failed to parse output in fn_check_package_is_availale when checking '+Executable+' the error is: '+e.Message+'. Is '+Executable+' installed?');
+       write_diagnostics('fn_check_package_is_available checking '+Executable+' indicates that '+Executable+' is installed OK.');
       end;
     end;
-   finally
-   s.free;
-   end;
-  finally
-   t.Free;
+  except
+   on e : exception do
+    begin
+     result := false;
+     write_diagnostics('Error: Failed to parse output in fn_check_package_is_available when checking '+Executable+' the error is: '+e.Message+'. Is '+Executable+' installed?');
+    end;
   end;
- except
-  on e : exception do
-   begin
-    result := false;
-    write_diagnostics('Error: Failed inside fn_check_package_is_availale when checking executable '+Executable+' the error is: '+e.Message+' . Is '+Executable+' installed?');
-   end;
+ finally
+  s.clear;
+  s.free;
+  t.Free;
  end;
 end;
 
@@ -852,44 +831,53 @@ var
   ct : integer;
   thismonitorname,thismonitorworkspace : string;
 begin
+ // Program start:
+ getout := false;
+
+ monitornames := TStringList.create;
+ monitorworkspaces := TStringList.create;
+ cmonitoractiveworkspaces := TStringList.create;
+
  // Quick check parameters
  ErrorMsg:=CheckOptions('h,c,d', 'help,config,diagnostics');
  if ErrorMsg<>'' then
   begin
    ShowException(Exception.Create(ErrorMsg));
-   Terminate;
-   Exit;
+   getout := true;
   end;
 
  // Parse parameters
  if HasOption('h', 'help') then
   begin
    WriteHelp;
-   Terminate;
-   Exit;
+   getout := true;
   end;
 
  // If passed a -d parameter then switch on diagnostic_mode to output useful diagnostic info as well as any "error:" type messages (which are always written out):
- diagnostic_mode := false;
- if HasOption('d', 'diagnostics') then diagnostic_mode := true;
- if diagnostic_mode then write_diagnostics('Diagnostic mode enabled.');
+ if not getout then
+  begin
+   diagnostic_mode := false;
+   if HasOption('d', 'diagnostics') then diagnostic_mode := true;
+   if diagnostic_mode then write_diagnostics('Diagnostic mode enabled.');
+  end;
 
- // Program start:
 
  // Initialise key variables:
- getout := false;
-
  try
-  write_diagnostics('Checking that required packages are installed:');
-  if not fn_check_package_is_availale('command not found','hyprctl','monitors','','','','',[poUsePipes],0) then getout := true;
-  if not fn_check_package_is_availale('command not found','ffplay','-version','','','','',[poUsePipes],0) then getout := true;
-  (*
-  if fn_GetNumberOfAppInstancesRunnnig('swayidle') = 0 then
+  if not getout then
    begin
-    if not fn_check_package_is_availale('command not found','swayidle','-h','','','','',[poUsePipes],0) then getout := true;
-    if not fn_runprocess('pkill','swayidle','','','','',[poWaitOnExit, poUsePipes],0) then;
+    write_diagnostics('Checking that required packages are installed:');
+    (*
+    if fn_GetNumberOfAppInstancesRunnnig('swayidle') = 0 then
+     begin
+      if not fn_check_package_is_available('command not found','swayidle','-h','','','','',[poUsePipes],0) then getout := true;
+      if not fn_runprocess('pkill','swayidle','','','','',[poWaitOnExit, poUsePipes],0) then getout := true;
+     end;
+     *)
+    if not fn_check_package_is_available('command not found','hyprctl','monitors','','','','',[poUsePipes],0) then getout := true;
+    if not fn_check_package_is_available('command not found','ffplay','-version','','','','',[poUsePipes],0) then getout := true;
    end;
-  *)
+
   if not getout then
    begin
     write_diagnostics(''); write_diagnostics('Initializing variables:');
@@ -934,9 +922,9 @@ begin
     write_diagnostics(''); write_diagnostics('Reading the hyprscreensaver.conf file:');
     // Generate default hyprscreensaver.conf file if it doesn't exist:
     if not fileexists(hyprscreensaver_conf_path_and_filename) then
-      begin
-       if not fn_write_hyprscreensaver_conf_file(hyprscreensaver_conf_path_and_filename) then getout := true; // If hyprscreensaver.conf not present then create it with the default parameter variables.
-      end;
+     begin
+      if not fn_write_hyprscreensaver_conf_file(hyprscreensaver_conf_path_and_filename) then getout := true; // If hyprscreensaver.conf not present then create it with the default parameter variables.
+     end;
     // Read hyprscreensaver.conf to set all of the above key variables to the values stored in it:
     if not getout then
      begin
@@ -953,7 +941,10 @@ begin
     output_monitor_config_info;
 
     // Find out what the currently focussed monitor is and the active workspaces for each monitor. Don't care if this fails:
-    if fn_get_current_monitor_focused_and_active_workspaces(nummonitors,cfocusedmonitorname,monitornames,cmonitoractiveworkspaces) then;
+    if not getout then
+     begin
+      if fn_get_current_monitor_focused_and_active_workspaces(nummonitors,cfocusedmonitorname,monitornames,cmonitoractiveworkspaces) then;
+     end;
 
     write_diagnostics(''); write_diagnostics('Checking that it is safe to continue running hyprscreensaver:');
 
