@@ -28,6 +28,7 @@ type
     cfocusedmonitorname : string;
     cmonitoractiveworkspaces : TStringList;
     diagnostic_mode : boolean;
+    monitorswitchdelaybefore,monitorswitchdelayafter,launchscreensaverdelaybefore,launchscreensaverdelayafter : integer;
     constructor Create(TheOwner: TComponent); override;
     destructor Destroy; override;
     procedure WriteHelp; virtual;
@@ -39,7 +40,7 @@ type
     function fn_read_hyprscreensaver_lastruntime(hyprscreensaver_lastruntime_path_and_filenamestr : string) : TDateTime;
     function fn_write_hyprscreensaver_conf_file(hyprscreensaver_conf_path_and_filenamestr : string) : boolean; // Write out a hyprscreensaver.conf file.
     procedure write_lastruntime_to_hyprscreensaver_lastruntime_path_and_filename(lastruntimedt : TDateTime; hyprscreensaver_lastruntime_path_and_filenamestr : string);
-    function fn_runprocess(Executable,param1,param2,param3,param4,param5 : string; ProcessOptions : TProcessOptions; sleepbeforeexecute : integer) : boolean;
+    function fn_runprocess(Executable,param1,param2,param3,param4,param5 : string; ProcessOptions : TProcessOptions; sleepbeforeexecute,sleepafterexecute : integer) : boolean;
     function fn_check_package_is_available(ExpectedErrorResponse,Executable,param1,param2,param3,param4,param5 : string; ProcessOptions : TProcessOptions; sleepbeforeexecute : integer) : boolean;
     function fn_get_monitor_info(var nummonitorsint : integer; var monitornamesstr : TStringList; var monitorworkspacesstr : TStringList) : boolean;
     function fn_get_current_monitor_focused_and_active_workspaces(var nummonitorsint : integer; var cfocusedmonitornamestr : string; var monitornamesstr : TStringList; var cmonitoractiveworkspacesstr : TStringList) : boolean;
@@ -243,24 +244,7 @@ begin
            temp := trimright(temp);
           end;
         // OK: Parse this line:
-        if pos('DELAY',uppercase(temp)) > 0 then
-         begin
-          write_diagnostics('Found delay type config command: '+temp);
-          temp := stringreplace(temp,'DELAY','',[rfreplaceall,rfignorecase]);
-          temp := stringreplace(temp,'=','',[rfreplaceall,rfignorecase]);
-          temp := stringreplace(temp,'"','',[rfreplaceall,rfignorecase]);
-          temp := stringreplace(temp,' ','',[rfreplaceall,rfignorecase]);
-          try
-           if strtoint(temp) >= 30 then // Min is 30 seconds, otherwise leave as default (60 seconds = 1 min).
-            begin
-             swayidledelayseconds := temp;
-            end;
-          except
-            swayidledelayseconds := temp;
-          end;
-          write_diagnostics('swayidledelayseconds is now set to '+swayidledelayseconds);
-         end
-         else if pos('SCREENSAVER_FOLDER',uppercase(temp)) > 0 then
+        if pos('SCREENSAVER_FOLDER',uppercase(temp)) > 0 then
          begin
           write_diagnostics('Found screensaver_folder type config command: '+temp);
           temp := stringreplace(temp,'SCREENSAVER_FOLDER','',[rfreplaceall,rfignorecase]);
@@ -281,6 +265,83 @@ begin
           temp := trimright(temp);
           screensaver_filename := temp;
           write_diagnostics('screensaver_filename is now set to '+screensaver_filename);
+         end
+         else if pos('MONITORSWITCHDELAYBEFORE',uppercase(temp)) > 0 then
+         begin
+          write_diagnostics('Found monitorswitchdelaybefore type config command: '+temp);
+          temp := stringreplace(temp,'MONITORSWITCHDELAYBEFORE','',[rfreplaceall,rfignorecase]);
+          temp := stringreplace(temp,'=','',[rfreplaceall,rfignorecase]);
+          temp := stringreplace(temp,'"','',[rfreplaceall,rfignorecase]);
+          temp := trimleft(temp);
+          temp := trimright(temp);
+          try
+           monitorswitchdelaybefore := strtoint(temp);
+          except
+           monitorswitchdelaybefore := 0;
+          end;
+          write_diagnostics('monitorswitchdelaybefore is now set to '+inttostr(monitorswitchdelaybefore));
+         end
+         else if pos('MONITORSWITCHDELAYAFTER',uppercase(temp)) > 0 then
+         begin
+          write_diagnostics('Found monitorswitchdelayafter type config command: '+temp);
+          temp := stringreplace(temp,'MONITORSWITCHDELAYAFTER','',[rfreplaceall,rfignorecase]);
+          temp := stringreplace(temp,'=','',[rfreplaceall,rfignorecase]);
+          temp := stringreplace(temp,'"','',[rfreplaceall,rfignorecase]);
+          temp := trimleft(temp);
+          temp := trimright(temp);
+          try
+           monitorswitchdelayafter := strtoint(temp);
+          except
+           monitorswitchdelayafter := 0;
+          end;
+          write_diagnostics('monitorswitchdelayafter is now set to '+inttostr(monitorswitchdelayafter));
+         end
+         else if pos('LAUNCHSCREENSAVERDELAYBEFORE',uppercase(temp)) > 0 then
+         begin
+          write_diagnostics('Found launchscreensaverdelaybefore type config command: '+temp);
+          temp := stringreplace(temp,'LAUNCHSCREENSAVERDELAYBEFORE','',[rfreplaceall,rfignorecase]);
+          temp := stringreplace(temp,'=','',[rfreplaceall,rfignorecase]);
+          temp := stringreplace(temp,'"','',[rfreplaceall,rfignorecase]);
+          temp := trimleft(temp);
+          temp := trimright(temp);
+          try
+           launchscreensaverdelaybefore := strtoint(temp);
+          except
+           launchscreensaverdelaybefore := 0;
+          end;
+          write_diagnostics('launchscreensaverdelaybefore is now set to '+inttostr(launchscreensaverdelaybefore));
+         end
+         else if pos('LAUNCHSCREENSAVERDELAYAFTER',uppercase(temp)) > 0 then
+         begin
+          write_diagnostics('Found launchscreensaverdelayafter type config command: '+temp);
+          temp := stringreplace(temp,'LAUNCHSCREENSAVERDELAYAFTER','',[rfreplaceall,rfignorecase]);
+          temp := stringreplace(temp,'=','',[rfreplaceall,rfignorecase]);
+          temp := stringreplace(temp,'"','',[rfreplaceall,rfignorecase]);
+          temp := trimleft(temp);
+          temp := trimright(temp);
+          try
+           launchscreensaverdelayafter := strtoint(temp);
+          except
+           launchscreensaverdelayafter := 0;
+          end;
+          write_diagnostics('launchscreensaverdelayafter is now set to '+inttostr(launchscreensaverdelayafter));
+         end
+         else if pos('DELAY',uppercase(temp)) > 0 then
+         begin
+          write_diagnostics('Found delay type config command: '+temp);
+          temp := stringreplace(temp,'DELAY','',[rfreplaceall,rfignorecase]);
+          temp := stringreplace(temp,'=','',[rfreplaceall,rfignorecase]);
+          temp := stringreplace(temp,'"','',[rfreplaceall,rfignorecase]);
+          temp := stringreplace(temp,' ','',[rfreplaceall,rfignorecase]);
+          try
+           if strtoint(temp) >= 30 then // Min is 30 seconds, otherwise leave as default (60 seconds = 1 min).
+            begin
+             swayidledelayseconds := temp;
+            end;
+          except
+            swayidledelayseconds := temp;
+          end;
+          write_diagnostics('swayidledelayseconds is now set to '+swayidledelayseconds);
          end
          else if pos('ADD_MONITOR_NAME',uppercase(temp)) > 0 then // Example: add_monitor_name = HDMI-A-1 run_screensaver_on_workspace = 8
          begin
@@ -418,6 +479,15 @@ begin
     writeln(f,'# present in the screensaver folder. Valid video file extensions for "random" mode video file selection are .mkv, .mp4, .avi, .mov, .wmv and .webm.');
     writeln(f,'screensaver_filename = '+screensaver_filename);
     writeln(f,'');
+    writeln(f,'The "monitorswitchdelaybefore" parameter indicates the number of milliseconds to wait before switching between monitors and workspaces. Increase this if your computer is having trouble launching the screensaver video players.');
+    writeln(f,'monitorswitchdelaybefore = '+inttostr(monitorswitchdelaybefore));
+    writeln(f,'The "monitorswitchdelayafter" parameter indicates the number of milliseconds to wait after switching between monitors and workspaces. Increase this if your computer is having trouble launching the screensaver video players.');
+    writeln(f,'monitorswitchdelayafter = '+inttostr(monitorswitchdelayafter));
+    writeln(f,'The "launchscreensaverdelaybefore" parameter indicates the number of milliseconds to wait before launching ffplay to run a screensaver video file. Increase this if your computer is having trouble launching the screensaver video players.');
+    writeln(f,'launchscreensaverdelaybefore = '+inttostr(launchscreensaverdelaybefore));
+    writeln(f,'The "launchscreensaverdelayafter" parameter indicates the number of milliseconds to wait after launching ffplay to run a screensaver video file. Increase this if your computer is having trouble launching the screensaver video players.');
+    writeln(f,'launchscreensaverdelayafter = '+inttostr(launchscreensaverdelayafter));
+    writeln(f,'');
     writeln(f,'# The "add_monitor_name = <monitor name found using hyprctl monitors> run_screensaver_on_workspace = <prefered screensaver workspace number>" is used to manually define');
     writeln(f,'# a monitor to run a screensaver on.');
     writeln(f,'# You need an "add_monitor_name" line for each of your connected monitors.');
@@ -471,7 +541,7 @@ begin
   end;
 end;
 
-function Thyprscreensaver.fn_runprocess(Executable,param1,param2,param3,param4,param5 : string; ProcessOptions : TProcessOptions; sleepbeforeexecute : integer) : boolean;
+function Thyprscreensaver.fn_runprocess(Executable,param1,param2,param3,param4,param5 : string; ProcessOptions : TProcessOptions; sleepbeforeexecute,sleepafterexecute : integer) : boolean;
 var
  Process : TProcess;
 begin
@@ -490,6 +560,7 @@ begin
    Process.Options := ProcessOptions;
    Process.Execute;
    result := true;
+   if sleepafterexecute > 0 then sleep(sleepafterexecute);
   except
    on e : exception do
     begin
@@ -871,7 +942,7 @@ begin
     if fn_GetNumberOfAppInstancesRunnnig('swayidle') = 0 then
      begin
       if not fn_check_package_is_available('command not found','swayidle','-h','','','','',[poUsePipes],0) then getout := true;
-      if not fn_runprocess('pkill','swayidle','','','','',[poWaitOnExit, poUsePipes],0) then getout := true;
+      if not fn_runprocess('pkill','swayidle','','','','',[poWaitOnExit, poUsePipes],0,0) then getout := true;
      end;
      *)
     if not fn_check_package_is_available('command not found','hyprctl','monitors','','','','',[poUsePipes],0) then getout := true;
@@ -901,6 +972,12 @@ begin
 
     swayidledelayseconds := '60'; // Default is 1 minute.
     write_diagnostics('swayidledelayseconds: '+swayidledelayseconds);
+
+    monitorswitchdelaybefore := 0; monitorswitchdelayafter := 100; launchscreensaverdelaybefore := 0; launchscreensaverdelayafter := 100;
+    write_diagnostics('monitorswitchdelaybefore: '+inttostr(monitorswitchdelaybefore));
+    write_diagnostics('monitorswitchdelayafter: '+inttostr(monitorswitchdelayafter));
+    write_diagnostics('launchscreensaverdelaybefore: '+inttostr(launchscreensaverdelaybefore));
+    write_diagnostics('launchscreensaverdelayafter: '+inttostr(launchscreensaverdelayafter));
 
     hyprscreensaver_conf_path_and_filename := HomeDir+'.config/hypr/hyprscreensaver.conf'; // Default.
     write_diagnostics('hyprscreensaver_conf_path_and_filename defaulted to: '+hyprscreensaver_conf_path_and_filename);
@@ -983,12 +1060,12 @@ begin
         write_diagnostics('fn_GetNumberOfAppInstancesRunnnig of swayidle = 0 so swayidle is not running so will run swayidle and then exit:');
         if c_parameters <> '' then
          begin
-          if not fn_runprocess('hyprctl','dispatch','exec','swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver -c '+c_parameters+'"','','',[poUsePipes],0) then getout := true;
+          if not fn_runprocess('hyprctl','dispatch','exec','swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver -c '+c_parameters+'"','','',[poUsePipes],0,0) then getout := true;
           write_diagnostics('Called: fn_runprocess(hyprctl,dispatch,exec,swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver -c '+c_parameters+'",,,[poUsePipes],0)');
          end
          else
          begin
-          if not fn_runprocess('hyprctl','dispatch','exec','swayidle -w timeout '+swayidledelayseconds+' '+AppPath+'hyprscreensaver','','',[poUsePipes],0) then getout := true;
+          if not fn_runprocess('hyprctl','dispatch','exec','swayidle -w timeout '+swayidledelayseconds+' '+AppPath+'hyprscreensaver','','',[poUsePipes],0,0) then getout := true;
           write_diagnostics('Called: fn_runprocess(hyprctl,dispatch,exec,swayidle -w timeout '+swayidledelayseconds+' '+AppPath+'hyprscreensaver,,,[poUsePipes],0)');
          end;
         getout := true;
@@ -998,7 +1075,7 @@ begin
     // Kill swayidle to stop it running until this instance of hyprscreensaver has finished.
     if not getout then
      begin
-      if not fn_runprocess('pkill','swayidle','','','','',[poWaitOnExit, poUsePipes],0) then
+      if not fn_runprocess('pkill','swayidle','','','','',[poWaitOnExit, poUsePipes],0,0) then
        begin
         getout := true;
         write_diagnostics('Error: Failed to run "pkill swayidle" to kill the swayidle process. Unable to continue,');
@@ -1021,13 +1098,13 @@ begin
         thismonitorname := monitornames[ct];
         thismonitorworkspace := monitorworkspaces[ct];
         // Switch to this monitor:
-        if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',thismonitorname,'','',[poWaitOnExit, poUsePipes],100) then getout := true; end;
+        if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',thismonitorname,'','',[poWaitOnExit, poUsePipes],monitorswitchdelaybefore,monitorswitchdelayafter) then getout := true; end;
         write_diagnostics('hyprctl dispatch focusmonitor '+thismonitorname);
         // Switch this monitor to its designated screensaver workspace:
-        if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace',thismonitorworkspace,'','',[poWaitOnExit, poUsePipes],100) then getout := true; end;
+        if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace',thismonitorworkspace,'','',[poWaitOnExit, poUsePipes],monitorswitchdelaybefore,monitorswitchdelayafter) then getout := true; end;
         write_diagnostics('hyprctl dispatch workspace '+thismonitorworkspace);
         // Launch screensaver video in ffplay on this monitor on its designated workspace:
-        if not getout then begin if not fn_runprocess('hyprctl','dispatch','exec','ffplay "'+screensaver_folder+screensaver_filename+'" -fs -exitonkeydown -exitonmousedown -loop 0','','',[poUsePipes],200) then getout := true; end;
+        if not getout then begin if not fn_runprocess('hyprctl','dispatch','exec','ffplay "'+screensaver_folder+screensaver_filename+'" -fs -exitonkeydown -exitonmousedown -loop 0','','',[poUsePipes],launchscreensaverdelaybefore,launchscreensaverdelayafter) then getout := true; end;
         write_diagnostics('hyprctl dispatch exec ffplay "'+screensaver_folder+screensaver_filename+'" -fs -exitonkeydown -exitonmousedown -loop 0');
         inc(ct);
        end;
@@ -1058,7 +1135,7 @@ begin
     // Kill all remaining ffplay processes:
     if not getout then
      begin
-      if not fn_runprocess('pkill','ffplay','','','','',[poWaitOnExit, poUsePipes],200) then
+      if not fn_runprocess('pkill','ffplay','','','','',[poWaitOnExit, poUsePipes],200,0) then
        begin
         getout := true;
         write_diagnostics('Error: Failed to run pkill ffplay. Will now exit.');
@@ -1081,14 +1158,14 @@ begin
          begin
           thismonitorname := monitornames[ct];
           // Switch to 1st monitor:
-          if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',thismonitorname,'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
+          if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',thismonitorname,'','',[poWaitOnExit, poUsePipes],0,0) then getout := true; end;
           write_diagnostics('hyprctl dispatch focusmonitor '+thismonitorname);
           // Switch that monitor to workspace 1:
-          if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace',cmonitoractiveworkspaces[ct],'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
+          if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace',cmonitoractiveworkspaces[ct],'','',[poWaitOnExit, poUsePipes],0,0) then getout := true; end;
           write_diagnostics('hyprctl dispatch workspace '+cmonitoractiveworkspaces[ct]);
           inc(ct);
          end;
-        if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',cfocusedmonitorname,'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
+        if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',cfocusedmonitorname,'','',[poWaitOnExit, poUsePipes],0,0) then getout := true; end;
        end
        else // Use default "return moniros to sensible workspaces" method:
        begin
@@ -1097,10 +1174,10 @@ begin
          begin
           thismonitorname := monitornames[ct];
           // Switch to 1st monitor:
-          if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',thismonitorname,'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
+          if not getout then begin if not fn_runprocess('hyprctl','dispatch','focusmonitor',thismonitorname,'','',[poWaitOnExit, poUsePipes],0,0) then getout := true; end;
           write_diagnostics('hyprctl dispatch focusmonitor '+thismonitorname);
           // Switch that monitor to workspace 1:
-          if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace',inttostr(ct+1),'','',[poWaitOnExit, poUsePipes],0) then getout := true; end;
+          if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace',inttostr(ct+1),'','',[poWaitOnExit, poUsePipes],0,0) then getout := true; end;
           write_diagnostics('hyprctl dispatch workspace '+inttostr(ct+1));
           inc(ct);
          end;
@@ -1115,7 +1192,7 @@ begin
      begin
       if c_parameters <> '' then
        begin
-        if not fn_runprocess('hyprctl','dispatch','exec','swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver -c '+c_parameters+'"','','',[poUsePipes],0) then
+        if not fn_runprocess('hyprctl','dispatch','exec','swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver -c '+c_parameters+'"','','',[poUsePipes],0,0) then
          begin
           getout := true;
           write_diagnostics('Error: Failed to restart swayidle via a call to fn_runprocess(hyprctl,dispatch,exec,swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver -c '+c_parameters+'",,,[poUsePipes],0)');
@@ -1127,7 +1204,7 @@ begin
        end
        else
        begin
-        if not fn_runprocess('hyprctl','dispatch','exec','swayidle -w timeout '+swayidledelayseconds+' '+AppPath+'hyprscreensaver','','',[poUsePipes],0) then
+        if not fn_runprocess('hyprctl','dispatch','exec','swayidle -w timeout '+swayidledelayseconds+' '+AppPath+'hyprscreensaver','','',[poUsePipes],0,0) then
          begin
           getout := true;
           write_diagnostics('Error: Failed to restart swayidle via a call to fn_runprocess(hyprctl,dispatch,exec,swayidle -w timeout '+swayidledelayseconds+' "'+AppPath+'hyprscreensaver,,,[poUsePipes],0)');
