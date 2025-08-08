@@ -466,7 +466,7 @@ begin
     writeln(f,'');
     writeln(f,'# The "delay = <seconds>" parameter e.g. "delay = 900" is the number of seconds to wait before "swayidle" runs hyprscreensaver.');
     writeln(f,'# The default is 60 seconds which is 1 minute and the minimun allowed value is 30 seconds.');
-    writeln(f,'# Example delay seconds values: 60 = 1 minute, 600 = 10 minutes, 900 = 15 minutes, 1800 = 30 miunutes, 3600 = 1 hour.');
+    writeln(f,'# Example delay seconds values: 60 = 1 minute, 600 = 10 minutes, 900 = 15 minutes, 1800 = 30 minutes, 3600 = 1 hour.');
     writeln(f,'delay = '+swayidledelayseconds);
     writeln(f,'');
     writeln(f,'# The "screensaver_folder = <folder containing your screensaver video files>" parameter indicates the folder containing your screenshot video files.');
