@@ -42,7 +42,7 @@ If the hyprscreensaver app won't run in the terminal then I *think* that if you 
 To install qt5pas on Arch: sudo pacman -S qt5pas   
 To install qt5pas on Debian/Ubuntu type distro: sudo apt install qt5pas
 
-Once you have checked that swayidle, hyprctl, ffplay are installed and you have a working hyprscreensaver app in the "~/.config/hypr/" folder then you can proceed to test it.
+Once you have checked that swayidle, hyprctl and ffplay are installed and you have a working hyprscreensaver app in the "~/.config/hypr/" folder then you can proceed to test it.
 
 From a terminal, type: ~/.config/hypr/hyprscreensaver -h
 It should display the following:
@@ -65,6 +65,11 @@ If that works OK then just press a key or click on one of the video player windo
 It should then automatically re-run the hyprscreensaver screensaver after the default 60 seconds of inactivity (no mouse or keyboard clicks).
 
 NB: You can stop the hyprscreensaver app from running by typing: pkill swayidle
+
+Once hyprscreensaver is working then you can get hyprland to start up automatically when hyprland starts up.
+You should just need to edit your "~/.config/hypr/hyprland.conf" file and comment out (add a "#" character to the start of a line) to any existing "exec-once = swayidle..." lines in the "Launch" section and add a new one:
+exec-once = ~/.config/hypr/hyprscreensaver
+If you save your modified hyprland.conf file and then re-start hyprland (or simply re-boot and log back in to hyprland) then you should find that the hyprscreensaver runs the screensaver video players after the default 60 seconds of inactivity.
 
 Once hyprscreensaver is working correctly using the defaults, you can customise it by editing the "~/.config/hypr/hyprscreensaver.conf" file:
 
