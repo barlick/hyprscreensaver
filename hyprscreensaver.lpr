@@ -465,7 +465,7 @@ begin
     writeln(f,'# hyprscreensaver configuration file.');
     writeln(f,'');
     writeln(f,'# The "delay = <seconds>" parameter e.g. "delay = 900" is the number of seconds to wait before "swayidle" runs hyprscreensaver.');
-    writeln(f,'# The default is 60 seconds which is 1 minute and the minimun allowed value is 30 seconds.');
+    writeln(f,'# The default is 60 seconds which is 1 minute and the minimum allowed value is 30 seconds.');
     writeln(f,'# Example delay seconds values: 60 = 1 minute, 600 = 10 minutes, 900 = 15 minutes, 1800 = 30 minutes, 3600 = 1 hour.');
     writeln(f,'delay = '+swayidledelayseconds);
     writeln(f,'');
@@ -488,7 +488,7 @@ begin
     writeln(f,'The "launchscreensaverdelayafter" parameter indicates the number of milliseconds to wait after launching ffplay to run a screensaver video file. Increase this if your computer is having trouble launching the screensaver video players.');
     writeln(f,'launchscreensaverdelayafter = '+inttostr(launchscreensaverdelayafter));
     writeln(f,'');
-    writeln(f,'# The "add_monitor_name = <monitor name found using hyprctl monitors> run_screensaver_on_workspace = <prefered screensaver workspace number>" is used to manually define');
+    writeln(f,'# The "add_monitor_name = <monitor name found using hyprctl monitors> run_screensaver_on_workspace = <preferred screensaver workspace number>" is used to manually define');
     writeln(f,'# a monitor to run a screensaver on.');
     writeln(f,'# You need an "add_monitor_name" line for each of your connected monitors.');
     writeln(f,'# So if you have two monitors then you would run the command "hyprctl monitors" in a terminal which would give you the names of both of your monitors.');
@@ -1245,7 +1245,7 @@ procedure Thyprscreensaver.WriteHelp;
 begin
   { add your help code here }
   writeln('Welcome to the hyprscreensaver terminal application.');
-  writeln('This is for use with the linux hyprland display manager to faciliate a screensaver capability.');
+  writeln('This is for use with the linux hyprland display manager to facilitate a screensaver capability.');
   writeln('');
   writeln('Running as: ', ExeName);
   writeln('');
