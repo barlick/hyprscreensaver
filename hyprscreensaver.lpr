@@ -21,7 +21,7 @@ type
     var swayidledelayseconds : string;
     InitialNumInstancesScreensaverApp : integer;
     lastruntime,thislastruntime : TDateTime;
-    AppPath,HomeDir,hyprscreensaver_conf_path_and_filename,hyprscreensaver_lastruntime_path_and_filename,screensaver_folder,screensaver_filename,c_parameters,monitors : string;
+    AppPath,HomeDir,hyprscreensaver_conf_path_and_filename,hyprscreensaver_lastruntime_path_and_filename,screensaver_folder,screensaver_filename,this_screensaver_filename,last_screensaver_filename,c_parameters,monitors : string;
     nummonitors : integer;
     monitornames : TStringList;
     monitorworkspaces : TStringList;
@@ -35,7 +35,7 @@ type
     function fn_GetNumberOfAppInstancesRunnnig(cmd:String) : integer;
     function fn_sanitize_folder(folder,HomeDirs : string) : string;
     function fn_read_c_parameter_override_for_hyprscreensaver_conf_path_and_filename : string;
-    function fn_get_random_screensaver_filename(screensaver_folderstr : string) : string;
+    function fn_get_random_screensaver_filename(screensaver_folderstr,last_screensaver_filenamestr : string) : string;
     function fn_read_hyprscreensaver_conf(hyprscreensaver_conf_path_and_filenamestr : string) : boolean;
     function fn_read_hyprscreensaver_lastruntime(hyprscreensaver_lastruntime_path_and_filenamestr : string) : TDateTime;
     function fn_write_hyprscreensaver_conf_file(hyprscreensaver_conf_path_and_filenamestr : string) : boolean; // Write out a hyprscreensaver.conf file.
@@ -142,12 +142,12 @@ begin
  end;
 end;
 
-function Thyprscreensaver.fn_get_random_screensaver_filename(screensaver_folderstr : string) : string;
+function Thyprscreensaver.fn_get_random_screensaver_filename(screensaver_folderstr,last_screensaver_filenamestr : string) : string;
 var
  dirts : TSearchrec;
  screensavervideofiles : TStringList;
  validfileextensions,thisfileextension : string;
- x : integer;
+ ct,x : integer;
 begin
  result := '';
  write_diagnostics('Attempting to find a random screensaver video file from within '+screensaver_folderstr);
@@ -180,15 +180,26 @@ begin
          result := screensavervideofiles[0];
          write_diagnostics('Selected the only available screensaver video file: '+result);
         end
-        else
+        else // Must have at least two possible screensaver video files:
         begin
-         Randomize;
-         x := Random(screensavervideofiles.Count);
-         if (x >= 0) and (x < screensavervideofiles.Count) then
-          begin
-           result := screensavervideofiles[x];
-           write_diagnostics('Selected random screensaver video file: '+result);
-          end;
+         Randomize; // Only call this once...
+         ct := 1;
+         repeat
+          x := Random(screensavervideofiles.Count);
+          if (x >= 0) and (x < screensavervideofiles.Count) then
+           begin
+            result := screensavervideofiles[x];
+            if last_screensaver_filenamestr <> '' then
+             begin
+              if (result = last_screensaver_filenamestr) and (ct < 20) then // Avoid choosing the one we had last time unless "last_screensaver_filenamestr" is blank in which case whatever gets returned is fine.
+               begin
+                result := '';
+               end;
+             end;
+            write_diagnostics('Selected random screensaver video file: '+result);
+           end;
+          inc(ct);
+         until (result <> '') or (ct > 20);
         end;
       end
       else
@@ -399,7 +410,11 @@ begin
     close(f);
     if (screensaver_filename = '') or (uppercase(screensaver_filename) = 'RANDOM') then
      begin
-      screensaver_filename := fn_get_random_screensaver_filename(screensaver_folder);
+      screensaver_filename := 'RANDOM';
+     end
+     else if uppercase(screensaver_filename) = 'RANDOMFOREACHMONITOR' then
+     begin
+      screensaver_filename := 'RANDOMFOREACHMONITOR';
      end;
     // If we didn't get any manually entered "add_monitor_name" entries or we saw an "add_monitor_name = auto run_screensaver_on_workspace = auto" line then we need to auto detect the monitors:
     if add_monitor_name_auto_detected or (nummonitors = 0) then
@@ -938,13 +953,13 @@ begin
   if not getout then
    begin
     write_diagnostics('Checking that required packages are installed:');
-    (*
-    if fn_GetNumberOfAppInstancesRunnnig('swayidle') = 0 then
-     begin
-      if not fn_check_package_is_available('command not found','swayidle','-h','','','','',[poUsePipes],0) then getout := true;
-      if not fn_runprocess('pkill','swayidle','','','','',[poWaitOnExit, poUsePipes],0,0) then getout := true;
-     end;
-     *)
+   (*
+   if fn_GetNumberOfAppInstancesRunnnig('swayidle') = 0 then
+    begin
+     if not fn_check_package_is_available('command not found','swayidle','-h','','','','',[poUsePipes],0) then getout := true;
+     if not fn_runprocess('pkill','swayidle','','','','',[poWaitOnExit, poUsePipes],0,0) then getout := true;
+    end;
+    *)
     if not fn_check_package_is_available('command not found','hyprctl','monitors','','','','',[poUsePipes],0) then getout := true;
     if not fn_check_package_is_available('command not found','ffplay','-version','','','','',[poUsePipes],0) then getout := true;
    end;
@@ -1028,7 +1043,17 @@ begin
     // Do we have valid settings read from hyprscreensaver.conf?
     if screensaver_folder = '' then begin getout := true; write_diagnostics('Error: screensaver_folder is not defined. Please check your screensaver_folder setting in '+hyprscreensaver_conf_path_and_filename+'.'); end;
     if screensaver_filename = '' then begin getout := true; write_diagnostics('Error: screensaver_filename is not defined. Please check your screensaver_filename setting in '+hyprscreensaver_conf_path_and_filename+'.'); end;
-    if not getout and not fileexists(screensaver_folder+screensaver_filename) then begin getout := true; write_diagnostics('Error: The selected screensaver video file '+screensaver_folder+screensaver_filename+' does not exist.'); end;
+    if not getout then
+     begin
+      if (uppercase(screensaver_filename) <> 'RANDOM') and (uppercase(screensaver_filename) <> 'RANDOMFOREACHMONITOR') then
+       begin
+        if not fileexists(screensaver_folder+screensaver_filename) then
+         begin
+          getout := true;
+          write_diagnostics('Error: The selected screensaver video file '+screensaver_folder+screensaver_filename+' does not exist.');
+         end;
+       end;
+     end;
 
     // Is the difference between "now" (lastruntime) and the last run time read from the hyprscreensaver.dat file (thislastruntime) < 10 seconds then it's a "misfire" so get out.
     if not getout then
@@ -1092,8 +1117,27 @@ begin
     if not getout then
      begin
       write_diagnostics(''); write_diagnostics('Launching screensaver(s):');
+
+      if uppercase(screensaver_filename) = 'RANDOM' then // Select a single screensaver video file to run on ALL monitors.
+       begin
+        screensaver_filename := fn_get_random_screensaver_filename(screensaver_folder,'');
+        if screensaver_filename = '' then
+         begin
+          getout := true; // No go....
+         end
+         else
+         begin
+          if not fileexists(screensaver_folder+screensaver_filename) then
+           begin
+            getout := true;
+            write_diagnostics('Error: The selected screensaver video file '+screensaver_folder+screensaver_filename+' does not exist.');
+           end;
+         end;
+       end;
+
+      last_screensaver_filename := '';
       ct := 0;
-      while ct < nummonitors do
+      while (ct < nummonitors) and not getout do
        begin
         thismonitorname := monitornames[ct];
         thismonitorworkspace := monitorworkspaces[ct];
@@ -1104,8 +1148,26 @@ begin
         if not getout then begin if not fn_runprocess('hyprctl','dispatch','workspace',thismonitorworkspace,'','',[poWaitOnExit, poUsePipes],monitorswitchdelaybefore,monitorswitchdelayafter) then getout := true; end;
         write_diagnostics('hyprctl dispatch workspace '+thismonitorworkspace);
         // Launch screensaver video in ffplay on this monitor on its designated workspace:
-        if not getout then begin if not fn_runprocess('hyprctl','dispatch','exec','ffplay "'+screensaver_folder+screensaver_filename+'" -fs -exitonkeydown -exitonmousedown -loop 0','','',[poUsePipes],launchscreensaverdelaybefore,launchscreensaverdelayafter) then getout := true; end;
-        write_diagnostics('hyprctl dispatch exec ffplay "'+screensaver_folder+screensaver_filename+'" -fs -exitonkeydown -exitonmousedown -loop 0');
+        this_screensaver_filename := screensaver_filename;
+        if uppercase(screensaver_filename) = 'RANDOMFOREACHMONITOR' then
+         begin
+          this_screensaver_filename := fn_get_random_screensaver_filename(screensaver_folder,last_screensaver_filename);
+          last_screensaver_filename := this_screensaver_filename;
+          if this_screensaver_filename = '' then
+           begin
+            getout := true; // No go....
+           end
+           else
+           begin
+            if not fileexists(screensaver_folder+this_screensaver_filename) then
+             begin
+              getout := true;
+              write_diagnostics('Error: The selected screensaver video file '+screensaver_folder+this_screensaver_filename+' does not exist.');
+             end;
+           end;
+         end;
+        if not getout then begin if not fn_runprocess('hyprctl','dispatch','exec','ffplay "'+screensaver_folder+this_screensaver_filename+'" -fs -exitonkeydown -exitonmousedown -loop 0','','',[poUsePipes],launchscreensaverdelaybefore,launchscreensaverdelayafter) then getout := true; end;
+        write_diagnostics('hyprctl dispatch exec ffplay "'+screensaver_folder+this_screensaver_filename+'" -fs -exitonkeydown -exitonmousedown -loop 0');
         inc(ct);
        end;
      end;
@@ -1215,6 +1277,7 @@ begin
          end;
        end;
      end;
+
    end;
  finally
   write_diagnostics('Exiting hyprscreensaver');

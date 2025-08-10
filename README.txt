@@ -82,9 +82,10 @@ Example delay seconds values: 60 = 1 minute, 600 = 10 minutes, 900 = 15 minutes,
 The "screensaver_folder = <folder containing your screensaver video files>" parameter indicates the folder containing your screenshot video files.'
 The default is "~/.config/hypr/" which should be OK to use in most cases.
 
-The "screensaver_filename = <screensaver video filename>" parameter indicates the screenshot video file in the screensaver folder that you want to play via "ffplay" on each monitor when hyprscreensaver runs.
-NOTE: If you set screensaver_filename to blank (screensaver_filename =) or "screensaver_filename = random" then hyprscreensaver will select a random screensaver video file
-present in the screensaver folder. Valid video file extensions for "random" mode video file selection are .mkv, .mp4, .avi, .mov, .wmv and .webm.
+The "screensaver_filename = <screensaver video filename>" parameter indicates the screenshot video file in the screensaver folder that you want to play via "ffplay" on ALL monitors when hyprscreensaver runs.
+If you set screensaver_filename to blank (screensaver_filename =) or "screensaver_filename = random" then hyprscreensaver will select a single random screensaver video file present in the screensaver folder and run that on ALL monitors.
+If you set screensaver_filename to "screensaver_filename = randomforeachmonitor" then hyprscreensaver will select a random screensaver video file present in the screensaver folder for EACH monitor so that allows you to have a different random screensaver on EACH of your monitors.
+Valid video file extensions for "random" and "randomforeachmonitor" modes video file selections are .mkv, .mp4, .avi, .mov, .wmv and .webm.
 
 The "monitorswitchdelaybefore" parameter indicates the number of milliseconds to wait before switching between monitors and workspaces. Increase this if your computer is having trouble launching the screensaver video players.
 The "monitorswitchdelayafter" parameter indicates the number of milliseconds to wait after switching between monitors and workspaces. Increase this if your computer is having trouble launching the screensaver video players.');
