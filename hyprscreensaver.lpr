@@ -953,7 +953,7 @@ begin
  try
   if not getout then
    begin
-    write_diagnostics('Checking that required packages are installed:');
+    write_diagnostics('Checking that the required packages are installed:');
    (*
    if fn_GetNumberOfAppInstancesRunnnig('swayidle') = 0 then
     begin
