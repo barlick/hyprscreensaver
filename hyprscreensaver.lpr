@@ -954,7 +954,7 @@ begin
   if not getout then
    begin
     write_diagnostics('Checking that the required packages are installed:');
-   (*
+   (* Not working:
    if fn_GetNumberOfAppInstancesRunnnig('swayidle') = 0 then
     begin
      if not fn_check_package_is_available('command not found','swayidle','-h','','','','',[poUsePipes],0) then getout := true;
