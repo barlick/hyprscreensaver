@@ -2,6 +2,8 @@ Welcome to the hyprscreensaver linux hyprland terminal screensaver application.
 This is for use with the linux hyprland display manager and implements a simple screensaver capability that uses "swayidle" to detect when a specified period of inactivity has elapsed and then run "ffplay" to play a chosen screensaver video file on all of your monitors.
 I coded and tested this using Arch linux but it should work OK on other distros such as Debian, Ubuntu, Linux Mint etc. as long as the hyprland display manager (dynamic tiling Wayland compositor) is in use.
 
+![alt text](https://github.com/barlick/hyprscreensaver/blob/main/hyprscreensaver_running_dual_monitors.jpg)
+
 Required packages:
 
 swayidle
@@ -73,6 +75,8 @@ If you save your modified hyprland.conf file and then re-start hyprland (or simp
 
 Once hyprscreensaver is working correctly using the defaults, you can customise it by editing the "~/.config/hypr/hyprscreensaver.conf" file:
 
+![alt text](https://github.com/barlick/hyprscreensaver/blob/main/hyprscreensaver_config.png)
+
 Parameters used within the hyprscreensaver.conf file:
 
 The "delay = <seconds>" parameter e.g. "delay = 900" is the number of seconds to wait before "swayidle" runs hyprscreensaver.
@@ -91,6 +95,7 @@ The "monitorswitchdelaybefore" parameter indicates the number of milliseconds to
 The "monitorswitchdelayafter" parameter indicates the number of milliseconds to wait after switching between monitors and workspaces. Increase this if your computer is having trouble launching the screensaver video players.');
 The "launchscreensaverdelaybefore" parameter indicates the number of milliseconds to wait before launching ffplay to run a screensaver video file. Increase this if your computer is having trouble launching the screensaver video players.');
 The "launchscreensaverdelayafter" parameter indicates the number of milliseconds to wait after launching ffplay to run a screensaver video file. Increase this if your computer is having trouble launching the screensaver video players.');
+The "usefullscreeninffplay" parameter defaults to Y (enabled). You can change this to N (disabled) if you have problems running screensaver videos on multiple monitors due to a recent issue with ffplay/wayland/hyprland (not sure which is responsible).
 
 The "add_monitor_name = <monitor name found using hyprctl monitors> run_screensaver_on_workspace = <preferred screensaver workspace number>" is used to manually define a monitor to run a screensaver on.
 You need an "add_monitor_name" line for each of your connected monitors.
