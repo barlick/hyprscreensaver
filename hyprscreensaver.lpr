@@ -29,6 +29,7 @@ type
     cmonitoractiveworkspaces : TStringList;
     diagnostic_mode : boolean;
     monitorswitchdelaybefore,monitorswitchdelayafter,launchscreensaverdelaybefore,launchscreensaverdelayafter : integer;
+    usefullscreeninffplay : boolean;
     constructor Create(TheOwner: TComponent); override;
     destructor Destroy; override;
     procedure WriteHelp; virtual;
@@ -404,6 +405,25 @@ begin
               write_diagnostics('Added monitor name '+monitorname+' mapped to run screensaver on workspace '+workspacestr+'.');
              end;
            end;
+         end
+         else if pos('USEFULLSCREENINFFPLAY',uppercase(temp)) > 0 then // Example: usefullscreeninffplay=Y
+         begin
+          write_diagnostics('Found usefullscreeninffplay type config command: '+temp);
+          temp := stringreplace(temp,'USEFULLSCREENINFFPLAY','',[rfreplaceall,rfignorecase]);
+          temp := stringreplace(temp,'=','',[rfreplaceall,rfignorecase]);
+          temp := stringreplace(temp,'"','',[rfreplaceall,rfignorecase]);
+          temp := stringreplace(temp,' ','',[rfreplaceall,rfignorecase]);
+          temp := trimleft(temp); temp := trimright(temp);
+          if copy(uppercase(temp),1,1) = 'Y' then
+           begin
+            usefullscreeninffplay := true;
+            write_diagnostics('usefullscreeninffplay is now set to Y (enabled).');
+           end
+           else
+           begin
+            usefullscreeninffplay := false;
+            write_diagnostics('usefullscreeninffplay is now set to N (disabled).');
+           end;
          end;
        end;
      end;
@@ -516,6 +536,16 @@ begin
     writeln(f,'# automatically work out your connected monitor names and calculate suitable default workspaces to run screensavers on for those monitors.');
     writeln(f,'# This *should* work in most cases so hence it''s used by default but it it doesn''t then you will have to add "add_monitor_name" lines manually as described above.');
     writeln(f,'add_monitor_name = auto run_screensaver_on_workspace = auto');
+    writeln(f,'');
+    writeln(f,'# The "usefullscreeninffplay" parameter defaults to Y (enabled). You can change this to N (disabled) if you have problems running screensaver videos on multiple monitors due to a recent issue with ffplay/wayland/hyprland (not sure which is responsible).');
+    if usefullscreeninffplay then
+     begin
+      writeln(f,'usefullscreeninffplay=Y');
+     end
+     else
+     begin
+      writeln(f,'usefullscreeninffplay=N');
+     end;
     writeln(f,'');
     close(f);
     result := true;
@@ -995,6 +1025,9 @@ begin
     write_diagnostics('launchscreensaverdelaybefore: '+inttostr(launchscreensaverdelaybefore));
     write_diagnostics('launchscreensaverdelayafter: '+inttostr(launchscreensaverdelayafter));
 
+    usefullscreeninffplay := true;
+    write_diagnostics('usefullscreeninffplay: Y (enabled)');
+
     hyprscreensaver_conf_path_and_filename := HomeDir+'.config/hypr/hyprscreensaver.conf'; // Default.
     write_diagnostics('hyprscreensaver_conf_path_and_filename defaulted to: '+hyprscreensaver_conf_path_and_filename);
     // If run using the -c <folder and filename of hyprscreensaver.conf> parameter then use that to override the default hyprscreensaver_conf_path_and_filename:
@@ -1167,7 +1200,14 @@ begin
              end;
            end;
          end;
-        if not getout then begin if not fn_runprocess('hyprctl','dispatch','exec','ffplay "'+screensaver_folder+this_screensaver_filename+'" -fs -exitonkeydown -exitonmousedown -loop 0','','',[poUsePipes],launchscreensaverdelaybefore,launchscreensaverdelayafter) then getout := true; end;
+        if usefullscreeninffplay then
+         begin
+          if not getout then begin if not fn_runprocess('hyprctl','dispatch','exec','ffplay "'+screensaver_folder+this_screensaver_filename+'" -fs -exitonkeydown -exitonmousedown -loop 0','','',[poUsePipes],launchscreensaverdelaybefore,launchscreensaverdelayafter) then getout := true; end;
+         end
+         else
+         begin
+          if not getout then begin if not fn_runprocess('hyprctl','dispatch','exec','ffplay "'+screensaver_folder+this_screensaver_filename+'" -exitonkeydown -exitonmousedown -loop 0','','',[poUsePipes],launchscreensaverdelaybefore,launchscreensaverdelayafter) then getout := true; end;
+         end;
         write_diagnostics('hyprctl dispatch exec ffplay "'+screensaver_folder+this_screensaver_filename+'" -fs -exitonkeydown -exitonmousedown -loop 0');
         inc(ct);
        end;
