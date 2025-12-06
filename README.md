@@ -92,9 +92,13 @@ If you set screensaver_filename to "screensaver_filename = randomforeachmonitor"
 Valid video file extensions for "random" and "randomforeachmonitor" modes video file selections are .mkv, .mp4, .avi, .mov, .wmv and .webm.
 
 The "monitorswitchdelaybefore" parameter indicates the number of milliseconds to wait before switching between monitors and workspaces. Increase this if your computer is having trouble launching the screensaver video players.
-The "monitorswitchdelayafter" parameter indicates the number of milliseconds to wait after switching between monitors and workspaces. Increase this if your computer is having trouble launching the screensaver video players.');
-The "launchscreensaverdelaybefore" parameter indicates the number of milliseconds to wait before launching ffplay to run a screensaver video file. Increase this if your computer is having trouble launching the screensaver video players.');
-The "launchscreensaverdelayafter" parameter indicates the number of milliseconds to wait after launching ffplay to run a screensaver video file. Increase this if your computer is having trouble launching the screensaver video players.');
+
+The "monitorswitchdelayafter" parameter indicates the number of milliseconds to wait after switching between monitors and workspaces. Increase this if your computer is having trouble launching the screensaver video players.
+
+The "launchscreensaverdelaybefore" parameter indicates the number of milliseconds to wait before launching ffplay to run a screensaver video file. Increase this if your computer is having trouble launching the screensaver video players.
+
+The "launchscreensaverdelayafter" parameter indicates the number of milliseconds to wait after launching ffplay to run a screensaver video file. Increase this if your computer is having trouble launching the screensaver video players.
+
 The "usefullscreeninffplay" parameter defaults to Y (enabled). You can change this to N (disabled) if you have problems running screensaver videos on multiple monitors due to a recent issue with ffplay/wayland/hyprland (not sure which is responsible).
 
 The "add_monitor_name = <monitor name found using hyprctl monitors> run_screensaver_on_workspace = <preferred screensaver workspace number>" is used to manually define a monitor to run a screensaver on.
